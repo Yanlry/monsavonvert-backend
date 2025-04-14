@@ -59,6 +59,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false // Non obligatoire à l'inscription
   },
+  isSubscribedToNewsletter: {
+    type: Boolean,
+    default: false, // Par défaut, l'utilisateur n'est pas abonné
+  },
   resetPasswordToken: {
     type: String,
     default: null // Non obligatoire à l'inscription

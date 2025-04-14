@@ -39,8 +39,12 @@ router.post('/signup', (req, res) => {
 
       // Sauvegardez l'utilisateur dans la base de données
       newUser.save().then(newDoc => {
-        console.log('User saved:', newDoc); // Vérifiez que le token est bien présent ici
-        res.status(201).json({ result: true, token: newDoc.token });
+        console.log('User saved:', newDoc); // Vérifiez que le token et l'ID utilisateur sont bien présents ici
+        res.status(201).json({
+          result: true,
+          token: newDoc.token,
+          userId: newDoc._id, // Ajoutez l'ID utilisateur dans la réponse
+        });
       }).catch(err => {
         console.error('Error saving user:', err);
         res.status(500).json({ result: false, error: 'Failed to save user' });
@@ -135,6 +139,27 @@ router.get('/:id', (req, res) => {
     .catch(err => {
       console.error('❌ [Backend] Erreur lors de la récupération des données utilisateur:', err);
       res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+    });
+});
+
+router.put('/subscribe-newsletter/:id', (req, res) => {
+  const userId = req.params.id;
+  const { isSubscribed } = req.body;
+
+  if (typeof isSubscribed !== 'boolean') {
+    return res.status(400).json({ result: false, error: 'Invalid value for subscription status.' });
+  }
+
+  User.findByIdAndUpdate(userId, { isSubscribedToNewsletter: isSubscribed }, { new: true })
+    .then(updatedUser => {
+      if (!updatedUser) {
+        return res.status(404).json({ result: false, error: 'User not found.' });
+      }
+      res.status(200).json({ result: true, user: updatedUser });
+    })
+    .catch(err => {
+      console.error('Error updating subscription status:', err);
+      res.status(500).json({ result: false, error: 'Internal server error.' });
     });
 });
 
