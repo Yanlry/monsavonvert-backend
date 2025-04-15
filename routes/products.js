@@ -155,4 +155,43 @@ router.delete('/delete/:id', async (req, res) => {
   }
 });
 
+// Ajouter un commentaire à un produit
+router.post('/:id/review', async (req, res) => {
+  try {
+    console.log("Données reçues par le backend :", req.body);
+
+    const { firstName, lastName, comment, rating } = req.body;
+
+    // Vérifiez que tous les champs sont présents
+    if (!firstName || !lastName || !comment || !rating) {
+      return res.status(400).json({ result: false, error: 'Champs obligatoires manquants.' });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ result: false, error: 'La note doit être comprise entre 1 et 5.' });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ result: false, error: 'Produit introuvable.' });
+    }
+
+    // Concaténer firstName et lastName pour le champ user
+    const user = `${firstName} ${lastName}`;
+
+    product.reviews.push({
+      user,
+      comment,
+      rating,
+    });
+
+    await product.save();
+
+    res.status(201).json({ result: true, message: 'Commentaire ajouté avec succès.', product });
+  } catch (err) {
+    console.error('Erreur lors de l\'ajout du commentaire :', err);
+    res.status(500).json({ result: false, error: 'Erreur lors de l\'ajout du commentaire.' });
+  }
+});
+
 module.exports = router;
