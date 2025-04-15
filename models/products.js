@@ -8,7 +8,8 @@ const productSchema = mongoose.Schema({
     stock: { type: Number, required: true, default: 0 },
     ingredients: { type: String, required: false },
     usageTips: { type: String, required: false },
-    image: { type: String, required: false }, // Ajoutez ce champ pour l'URL de l'image
+    // Remplacer le champ image par un tableau d'images
+    images: [{ type: String }], // Tableau pouvant contenir jusqu'à 5 URLs d'images
     reviews: [
       {
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
