@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 
 // Gestion des erreurs générales
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Erreur détectée :', err.stack);
   res.status(500).json({
     error: 'Internal Server Error',
     message: err.message || 'Une erreur est survenue sur le serveur'
