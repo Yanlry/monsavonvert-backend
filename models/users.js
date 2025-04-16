@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
       /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
       'Veuillez fournir une adresse email valide'
     ],
-    lowercase: true
+    lowercase: true // Convertit automatiquement l'email en minuscule
   },
   password: {
     type: String,
@@ -57,7 +57,8 @@ const userSchema = new mongoose.Schema({
   },
   termsAccepted: {
     type: Boolean,
-    default: false // Non obligatoire à l'inscription
+    required: [true, 'Vous devez accepter les termes et conditions pour créer un compte.'],
+    default: false,
   },
   isSubscribedToNewsletter: {
     type: Boolean,
@@ -91,6 +92,22 @@ const userSchema = new mongoose.Schema({
   timestamps: true, // Ajoute automatiquement `createdAt` et `updatedAt`
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
+});
+
+// Middleware pour convertir les champs en minuscule avant de sauvegarder
+userSchema.pre('save', function (next) {
+  if (this.firstName) this.firstName = this.firstName.toLowerCase();
+  if (this.lastName) this.lastName = this.lastName.toLowerCase();
+  if (this.email) this.email = this.email.toLowerCase();
+  if (this.addresses && this.addresses.length > 0) {
+    this.addresses = this.addresses.map(address => ({
+      ...address,
+      street: address.street ? address.street.toLowerCase() : null,
+      city: address.city ? address.city.toLowerCase() : null,
+      country: address.country ? address.country.toLowerCase() : null,
+    }));
+  }
+  next();
 });
 
 const User = mongoose.model('User', userSchema);
