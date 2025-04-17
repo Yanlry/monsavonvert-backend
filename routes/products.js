@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Product = require('../models/Products'); // Importer le modèle Product
+const Product = require('../models/product'); // Importer le modèle Product
 const multer = require('multer'); // Importer multer
 const { CloudinaryStorage } = require('multer-storage-cloudinary'); // Importer CloudinaryStorage
 const cloudinary = require('cloudinary').v2; // Importer Cloudinary
