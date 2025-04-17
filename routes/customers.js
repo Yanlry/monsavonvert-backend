@@ -1,7 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
-const Customer = require('../models/customer');
+const Customer = require('../models/customer'); // Importation correcte si le fichier est nommé `customer.js`
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const uid2 = require('uid2');
