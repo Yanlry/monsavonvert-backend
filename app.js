@@ -13,7 +13,7 @@ var app = express();
 
 // Configuration CORS améliorée
 app.use(cors({
-  origin: ['https://monsavonvert-backend.vercel.app', 'http://localhost:3000'],
+  origin: ['https://monsavonvert-frontend.vercel.app', 'http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -22,7 +22,7 @@ app.use(cors({
 
 // Middleware pour ajouter explicitement les en-têtes CORS
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://monsavonvert-backend.vercel.app');
+  res.header('Access-Control-Allow-Origin', 'https://monsavonvert-frontend.vercel.app');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
