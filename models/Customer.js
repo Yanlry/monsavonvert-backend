@@ -27,7 +27,7 @@ customerSchema.pre('save', function (next) {
   this.address = this.address.toLowerCase();
   this.city = this.city.toLowerCase();
   this.country = this.country.toLowerCase();
-  next();
+  next();""
 });
 
 module.exports = mongoose.model('Customer', customerSchema);
