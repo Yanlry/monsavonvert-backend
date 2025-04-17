@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Customer = require('../models/Customer');
-const User = require('../models/users'); // Importez le modèle User
+const User = require('../models/Users'); // Importez le modèle User
 const bcrypt = require('bcryptjs');
 const uid2 = require('uid2');
 
