@@ -12,12 +12,18 @@ var customersRouter = require('./routes/customers'); // Importez la route des cl
 
 var app = express();
 
+// Configuration CORS
+app.use(cors({
+  origin: 'https://monsavonvert-frontend.vercel.app', // URL de votre frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Méthodes HTTP autorisées
+  credentials: true // Si vous utilisez des cookies ou des sessions
+}));
+
 const PORT = process.env.PORT || 3000; // Utilise le port défini dans .env ou 3000 par défaut
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
 
-app.use(cors());
 app.use(logger('dev'));
 app.use(express.json({ limit: '10mb' })); // Augmente la limite à 10 Mo pour les requêtes JSON
 app.use(express.urlencoded({ extended: false, limit: '10mb' })); // Augmente la limite à 10 Mo pour les requêtes URL-encodées
