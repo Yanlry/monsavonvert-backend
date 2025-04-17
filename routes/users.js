@@ -4,7 +4,7 @@ var router = express.Router();
 require('../models/connection');
 const User = require('../models/users');
 const { checkBody } = require('../modules/checkBody'); 
-const bcrypt = require('bcrypt'); 
+const bcrypt = require('bcryptjs');
 const uid2 = require('uid2'); 
 
 const validatePassword = (password) => {
