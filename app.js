@@ -1,5 +1,11 @@
 require('dotenv').config();
+const mongoose = require('mongoose');
 
+mongoose.connect(process.env.CONNECTION_STRING)
+  .then(() => console.log('✅ MongoDB connecté avec succès'))
+  .catch(err => console.error('❌ Erreur MongoDB :', err));
+
+  
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');

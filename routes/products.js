@@ -58,11 +58,17 @@ router.post('/add', upload.array('images', 5), (req, res) => { // Accepter jusqu
   });
 
 // Récupérer tous les produits
-router.get('/', (req, res) => {
-  Product.find()
-    .then(products => res.status(200).json({ result: true, products }))
-    .catch(err => res.status(500).json({ result: false, error: 'Erreur lors de la récupération des produits.' }));
+router.get('/', async (req, res) => {
+  try {
+    const products = await Product.find();
+    console.log('Produits récupérés :', products); // 👈 Ajout pour debug
+    res.status(200).json({ result: true, products });
+  } catch (err) {
+    console.error("❌ Erreur MongoDB :", err); // 👈 Log utile pour Render logs
+    res.status(500).json({ result: false, error: 'Erreur lors de la récupération des produits.' });
+  }
 });
+
 
 // Récupérer un produit par ID
 router.get('/:id', (req, res) => {
