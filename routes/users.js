@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router(); 
 
 require('../models/connection');
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const { checkBody } = require('../modules/checkBody'); 
 const bcrypt = require('bcryptjs');
@@ -122,7 +123,9 @@ router.get('/:id', (req, res) => {
   const userId = req.params.id;
   console.log('🔍 [Backend] Récupération des données utilisateur pour l\'ID:', userId);
 
-  if (!userId || userId === 'null') {
+  // Vérifiez si l'ID est valide
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.error('❌ [Backend] ID utilisateur invalide:', userId);
     return res.status(400).json({ result: false, error: 'ID utilisateur invalide.' });
   }
 

@@ -9,6 +9,7 @@ const customerSchema = new mongoose.Schema({
   city: { type: String, required: true },
   postalCode: { type: String, required: true },
   country: { type: String, required: true },
+  orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
   reviews: [
     {
       rating: { type: Number, required: true, min: 1, max: 5 },
