@@ -82,23 +82,50 @@ router.post('/signin', (req, res) => {
   });
 });
 
+router.get('/me', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1]; // Récupère le token depuis les headers
+
+  if (!token) {
+    return res.status(401).json({ result: false, error: 'Token manquant.' });
+  }
+
+  User.findOne({ token }).then(user => {
+    if (!user) {
+      return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
+    }
+
+    res.status(200).json({
+      result: true,
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        addresses: user.addresses,
+        isSubscribedToNewsletter: user.isSubscribedToNewsletter,
+      },
+    });
+  }).catch(err => {
+    console.error('❌ [Backend] Erreur lors de la récupération des données utilisateur :', err);
+    res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+  });
+});
+
 router.put('/update/:id', (req, res) => {
   const userId = req.params.id;
-  console.log('🔍 [Backend] ID utilisateur reçu dans la requête:', userId); // Log pour vérifier l'ID utilisateur
 
-  if (!userId || userId === 'null') {
-    console.error('❌ [Backend] Erreur : ID utilisateur invalide.');
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.error('❌ [Backend] ID utilisateur invalide:', userId);
     return res.status(400).json({ result: false, error: 'ID utilisateur invalide.' });
   }
 
   User.findById(userId).then(user => {
     if (!user) {
-      console.error('❌ [Backend] Erreur : Utilisateur introuvable pour l\'ID:', userId);
+      console.error('❌ [Backend] Utilisateur introuvable pour l\'ID:', userId);
       return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    console.log('✅ [Backend] Utilisateur trouvé, mise à jour des champs:', req.body);
-    // Mettre à jour les champs fournis dans le corps de la requête
+    // Mise à jour des champs
     const updates = req.body;
     Object.keys(updates).forEach(key => {
       user[key] = updates[key];
