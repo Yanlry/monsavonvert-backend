@@ -25,10 +25,14 @@ router.post('/signup', (req, res) => {
       // Hachez le mot de passe
       const hash = bcrypt.hashSync(req.body.password, 10);
 
+      // Mettre en majuscule la première lettre du prénom et du nom
+      const formattedFirstName = req.body.firstName.charAt(0).toUpperCase() + req.body.firstName.slice(1).toLowerCase();
+      const formattedLastName = req.body.lastName.charAt(0).toUpperCase() + req.body.lastName.slice(1).toLowerCase();
+
       // Créez un nouvel utilisateur avec tous les champs requis
       const newUser = new User({
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
+        firstName: formattedFirstName,
+        lastName: formattedLastName,
         email: req.body.email.toLowerCase(),
         password: hash,
         role: req.body.role || 'user', // Par défaut, le rôle est "user"

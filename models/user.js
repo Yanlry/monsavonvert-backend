@@ -94,11 +94,17 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Middleware pour convertir les champs en minuscule avant de sauvegarder
+// Middleware pour formater les champs avant de sauvegarder
 userSchema.pre('save', function (next) {
-  if (this.firstName) this.firstName = this.firstName.toLowerCase();
-  if (this.lastName) this.lastName = this.lastName.toLowerCase();
-  if (this.email) this.email = this.email.toLowerCase();
+  if (this.firstName) {
+    this.firstName = this.firstName.charAt(0).toUpperCase() + this.firstName.slice(1).toLowerCase();
+  }
+  if (this.lastName) {
+    this.lastName = this.lastName.charAt(0).toUpperCase() + this.lastName.slice(1).toLowerCase();
+  }
+  if (this.email) {
+    this.email = this.email.toLowerCase();
+  }
   if (this.addresses && this.addresses.length > 0) {
     this.addresses = this.addresses.map(address => ({
       ...address,
