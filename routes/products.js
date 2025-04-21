@@ -69,7 +69,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // Récupérer un produit par ID
 router.get('/:id', (req, res) => {
   Product.findById(req.params.id)

@@ -12,28 +12,36 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var usersRouter = require('./routes/users');
-var productsRouter = require('./routes/products'); // Importez les routes des produits
-var customersRouter = require('./routes/customers'); // Importez la route des clients
+var productsRouter = require('./routes/products');
+var customersRouter = require('./routes/customers');
+var stripeRoutes = require('./routes/stripe-webhook');
+var stripeCheckoutRoutes = require('./routes/create-checkout');
+var confirmOrderRouter = require('./routes/confirm-order'); // Nouvelle route
+var ordersRouter = require('./routes/orders');
 
 var app = express();
 
-const PORT = process.env.PORT || 3000; // Utilise le port défini dans .env ou 3000 par défaut
+const PORT = process.env.PORT || 8888; // Utilise 8888 comme port par défaut
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`✅ Server is running on http://localhost:${PORT}`);
 });
 
 const cors = require('cors');
 app.use(cors());
 
 app.use(logger('dev'));
-app.use(express.json({ limit: '10mb' })); // Augmente la limite à 10 Mo pour les requêtes JSON
-app.use(express.urlencoded({ extended: false, limit: '10mb' })); // Augmente la limite à 10 Mo pour les requêtes URL-encodées
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/users', usersRouter); // Route pour les utilisateurs
-app.use('/products', productsRouter); // Route pour les produits
-app.use('/customers', customersRouter); // Route pour les clients
+app.use('/users', usersRouter);
+app.use('/products', productsRouter);
+app.use('/customers', customersRouter);
+app.use('/stripe', stripeRoutes);
+app.use('/api', stripeCheckoutRoutes);
+app.use('/api', confirmOrderRouter); // Ajouter la nouvelle route avec le préfixe /api
+app.use('/orders', ordersRouter);
 
 module.exports = app;
