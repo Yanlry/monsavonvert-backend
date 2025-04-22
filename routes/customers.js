@@ -1,4 +1,3 @@
-
 require('../models/connection');
 const express = require("express");
 const router = express.Router();
@@ -75,6 +74,68 @@ router.get('/search', (req, res) => {
   // Vérifier si l'utilisateur a le rôle 'admin'
   User.findOne({ token }).then(adminUser => {
     if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ result: false, error: 'Accès refusé. Vous n\'êtes pas administrateur.' });
+    }
+    
+    // Rechercher le client par email ET rôle 'user'
+    User.findOne({ email: email.toLowerCase(), role: 'user' }).then(user => {
+      if (!user) {
+        console.log('❌ [Backend] Aucun client trouvé avec cet email:', email);
+        return res.status(404).json({ result: false, error: 'Client introuvable.' });
+      }
+      
+      console.log('✅ [Backend] Client trouvé:', user.email);
+      
+      // Trouver l'adresse par défaut ou la première adresse si disponible
+      const defaultAddress = user.addresses.find(addr => addr.isDefault) || user.addresses[0] || {};
+      
+      const customer = {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        address: defaultAddress.street || null,
+        postalCode: defaultAddress.postalCode || null,
+        city: defaultAddress.city || null,
+        country: defaultAddress.country || null,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        notes: user.notes || '',
+      };
+      
+      res.status(200).json({ result: true, customer });
+    }).catch(err => {
+      console.error('❌ [Backend] Erreur lors de la recherche du client:', err);
+      res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+    });
+  }).catch(err => {
+    console.error('❌ [Backend] Erreur lors de la vérification du token:', err);
+    res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+  });
+});
+
+// Nouvelle route pour rechercher un client par email en paramètre d'URL
+router.get('/find-by-email/:email', (req, res) => {
+  const { email } = req.params;
+  console.log('🔍 [Backend] Recherche de client par email (params):', email);
+  
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    console.log('❌ [Backend] Token manquant');
+    return res.status(401).json({ result: false, error: 'Token manquant.' });
+  }
+  
+  if (!email) {
+    console.log('❌ [Backend] Email manquant dans les paramètres');
+    return res.status(400).json({ result: false, error: 'Email manquant dans les paramètres.' });
+  }
+  
+  // Vérifier si l'utilisateur a le rôle 'admin'
+  User.findOne({ token }).then(adminUser => {
+    if (!adminUser || adminUser.role !== 'admin') {
+      console.log('⛔ [Backend] Accès refusé pour l\'utilisateur:', adminUser?.email);
       return res.status(403).json({ result: false, error: 'Accès refusé. Vous n\'êtes pas administrateur.' });
     }
     

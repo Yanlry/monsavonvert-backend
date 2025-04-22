@@ -83,6 +83,78 @@ router.get('/:orderId', async (req, res) => {
   }
 });
 
+// NOUVELLE ROUTE: Route pour mettre à jour le statut d'une commande
+router.put('/:orderId/status', async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    const { status } = req.body;
+    console.log(`🔄 [Backend] Mise à jour du statut de la commande ${orderId} vers ${status}`);
+    
+    // Vérifier l'authentification admin (token dans les headers)
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      console.log('❌ [Backend] Token manquant');
+      return res.status(401).json({ result: false, error: 'Token manquant' });
+    }
+    
+    // Vérifier que l'utilisateur a le rôle 'admin'
+    const adminUser = await User.findOne({ token });
+    if (!adminUser || adminUser.role !== 'admin') {
+      console.log('⛔ [Backend] Accès refusé pour l\'utilisateur:', adminUser?.email);
+      return res.status(403).json({ result: false, error: 'Accès refusé. Vous n\'êtes pas administrateur.' });
+    }
+    
+    // Vérifier que le statut est valide
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      console.log('❌ [Backend] Statut invalide:', status);
+      return res.status(400).json({ result: false, error: 'Statut invalide' });
+    }
+    
+    // Traduction des statuts en français
+    const statusLabels = {
+      'pending': 'En attente',
+      'processing': 'En préparation',
+      'shipped': 'Expédiée',
+      'delivered': 'Livrée',
+      'cancelled': 'Annulée'
+    };
+    
+    // Mise à jour du statut de la commande
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { 
+        status: status,
+        statusLabel: statusLabels[status],
+        updatedAt: new Date()
+      },
+      { new: true }
+    ).populate('customer');
+    
+    if (!updatedOrder) {
+      console.log(`❌ [Backend] Commande non trouvée avec l'ID: ${orderId}`);
+      return res.status(404).json({ result: false, error: 'Commande non trouvée' });
+    }
+    
+    console.log(`✅ [Backend] Statut de la commande mis à jour: ${orderId} -> ${status}`);
+    
+    // Formater la commande pour la réponse
+    const formattedOrder = formatOrderForResponse(updatedOrder);
+    
+    res.status(200).json({
+      result: true,
+      order: formattedOrder
+    });
+  } catch (error) {
+    console.error("❌ [Backend] Erreur lors de la mise à jour du statut de la commande:", error);
+    res.status(500).json({ 
+      result: false, 
+      error: "Erreur lors de la mise à jour du statut de la commande: " + error.message 
+    });
+  }
+});
+
 // NOUVELLE ROUTE: Route pour obtenir toutes les commandes (côté admin) classées par catégories
 router.get('/', async (req, res) => {
   try {
