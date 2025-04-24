@@ -182,6 +182,18 @@ router.get('/', async (req, res) => {
     
     console.log(`✅ [Backend] ${allOrders.length} commandes trouvées au total`);
     
+    // NOUVEAU CODE: Calcul du panier moyen
+    let totalAmount = 0;
+    for (let order of allOrders) {
+      // Utiliser totalAmount ou total selon ce qui est disponible dans chaque commande
+      totalAmount += order.totalAmount || order.total || 0;
+    }
+    
+    // Calculer la moyenne (s'il n'y a pas de commandes, le panier moyen est 0)
+    const averageBasket = allOrders.length > 0 ? totalAmount / allOrders.length : 0;
+    console.log(`💰 [Backend] Panier moyen calculé: ${averageBasket.toFixed(2)} €`);
+    // FIN DU NOUVEAU CODE
+    
     // Organiser les commandes par catégories
     const pendingOrders = allOrders.filter(order => order.status === 'pending');
     const inDeliveryOrders = allOrders.filter(order => 
@@ -208,7 +220,8 @@ router.get('/', async (req, res) => {
         count: cancelledOrders.length,
         orders: cancelledOrders.map(order => formatOrderForResponse(order))
       },
-      total: allOrders.length
+      total: allOrders.length,
+      averageBasket: parseFloat(averageBasket.toFixed(2)) // NOUVEAU: Ajouter le panier moyen à la réponse
     };
     
     // Loguer les statistiques
@@ -217,7 +230,8 @@ router.get('/', async (req, res) => {
       - En cours de livraison: ${inDeliveryOrders.length}
       - Livrées: ${deliveredOrders.length}
       - Annulées: ${cancelledOrders.length}
-      - Total: ${allOrders.length}`);
+      - Total: ${allOrders.length}
+      - Panier moyen: ${averageBasket.toFixed(2)} €`); // NOUVEAU: Ajout du panier moyen dans les logs
     
     res.status(200).json({
       result: true,
