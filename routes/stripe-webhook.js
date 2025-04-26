@@ -3,8 +3,6 @@ const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Customer = require("../models/Customer");
 const Order = require("../models/Order");
-// Ajout de l'import du modèle Product
-const Product = require("../models/product");
 
 // Route pour les tests - garde-la pendant que tu développes
 router.post("/webhook-test", express.json(), async (req, res) => {
@@ -89,61 +87,9 @@ router.post("/webhook-test", express.json(), async (req, res) => {
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // NOUVEAU: Mise à jour des stocks
-      console.log(`🔄 Mise à jour des stocks...`);
-      for (const item of parsedItems) {
-        try {
-          // Récupérer l'ID du produit 
-          const productId = item.productId || item.id;
-          
-          if (!productId) {
-            console.log(`⚠️ Pas d'ID produit pour l'article: ${item.name}, recherche par nom...`);
-            
-            // Plan B: Rechercher par nom du produit
-            const product = await Product.findOne({ title: item.name });
-            
-            if (!product) {
-              console.error(`❌ Produit non trouvé: ${item.name}`);
-              continue;
-            }
-            
-            // Calculer le nouveau stock
-            const newStock = Math.max(0, product.stock - item.quantity);
-            console.log(`📊 Mise à jour du stock pour ${product.title}: ${product.stock} -> ${newStock}`);
-            
-            // Mettre à jour le stock
-            product.stock = newStock;
-            await product.save();
-            
-            console.log(`✅ Stock mis à jour pour: ${product.title}`);
-          } else {
-            // Récupérer le produit par ID
-            const product = await Product.findById(productId);
-            
-            if (!product) {
-              console.error(`❌ Produit non trouvé avec l'ID: ${productId}`);
-              continue;
-            }
-            
-            // Calculer le nouveau stock
-            const newStock = Math.max(0, product.stock - item.quantity);
-            console.log(`📊 Mise à jour du stock pour ${product.title}: ${product.stock} -> ${newStock}`);
-            
-            // Mettre à jour le stock
-            product.stock = newStock;
-            await product.save();
-            
-            console.log(`✅ Stock mis à jour pour le produit ID: ${productId}`);
-          }
-        } catch (error) {
-          console.error(`❌ Erreur lors de la mise à jour du stock:`, error);
-          // On continue avec les autres produits même en cas d'erreur
-        }
-      }
-
-      console.log("✅ Client, commande et stocks enregistrés avec succès.");
+      console.log("✅ Client et commande enregistrés avec succès.");
     } catch (error) {
-      console.error("❌ Erreur lors de l'enregistrement:", error);
+      console.error("❌ Erreur lors de l'enregistrement du client ou de la commande:", error);
       return res.status(200).send("Webhook reçu, erreur de traitement interne.");
     }
   }
@@ -263,61 +209,9 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // NOUVEAU: Mise à jour du stock pour chaque produit
-      console.log(`🔄 Mise à jour des stocks...`);
-      for (const item of parsedItems) {
-        try {
-          // Récupérer l'ID du produit 
-          const productId = item.productId || item.id;
-          
-          if (!productId) {
-            console.log(`⚠️ Pas d'ID produit pour l'article: ${item.name}, recherche par nom...`);
-            
-            // Plan B: Rechercher par nom du produit
-            const product = await Product.findOne({ title: item.name });
-            
-            if (!product) {
-              console.error(`❌ Produit non trouvé: ${item.name}`);
-              continue;
-            }
-            
-            // Calculer le nouveau stock
-            const newStock = Math.max(0, product.stock - item.quantity);
-            console.log(`📊 Mise à jour du stock pour ${product.title}: ${product.stock} -> ${newStock}`);
-            
-            // Mettre à jour le stock
-            product.stock = newStock;
-            await product.save();
-            
-            console.log(`✅ Stock mis à jour pour: ${product.title}`);
-          } else {
-            // Récupérer le produit par ID
-            const product = await Product.findById(productId);
-            
-            if (!product) {
-              console.error(`❌ Produit non trouvé avec l'ID: ${productId}`);
-              continue;
-            }
-            
-            // Calculer le nouveau stock
-            const newStock = Math.max(0, product.stock - item.quantity);
-            console.log(`📊 Mise à jour du stock pour ${product.title}: ${product.stock} -> ${newStock}`);
-            
-            // Mettre à jour le stock
-            product.stock = newStock;
-            await product.save();
-            
-            console.log(`✅ Stock mis à jour pour le produit ID: ${productId}`);
-          }
-        } catch (error) {
-          console.error(`❌ Erreur lors de la mise à jour du stock:`, error);
-          // On continue avec les autres produits même en cas d'erreur
-        }
-      }
-
-      console.log("✅ Client, commande et stocks enregistrés avec succès.");
+      console.log("✅ Client et commande enregistrés avec succès.");
     } catch (error) {
-      console.error("❌ Erreur lors de l'enregistrement:", error);
+      console.error("❌ Erreur lors de l'enregistrement du client ou de la commande:", error);
       // Ne pas échouer le webhook même en cas d'erreur de traitement
       return res.status(200).send("Webhook reçu, erreur de traitement interne.");
     }
