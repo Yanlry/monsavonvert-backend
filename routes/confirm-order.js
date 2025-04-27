@@ -8,7 +8,6 @@ const Product = require('../models/product'); // Import du modèle Product pour 
 // Route pour confirmer une commande après paiement Stripe
 router.post('/confirm-order', async (req, res) => {
   try {
-    console.log("📝 Réception d'une demande de confirmation de commande");
     const { customerId, items, totalAmount, sessionId, shippingMethod, shippingCost } = req.body;
 
     console.log("📋 Données reçues:", {
