@@ -3,7 +3,9 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Customer = require('../models/Customer');
 const User = require('../models/user');
-const Product = require('../models/product'); // Import du modèle Product pour accéder aux stocks
+const Product = require('../models/product');
+// Import du module d'envoi d'email que nous allons créer
+const { sendOrderConfirmation } = require('../modules/emailSender');
 
 // Route pour confirmer une commande après paiement Stripe
 router.post('/confirm-order', async (req, res) => {
@@ -65,7 +67,7 @@ router.post('/confirm-order', async (req, res) => {
       }
     }
 
-    // NOUVEAU : Vérifier le stock avant de créer la commande
+    // Vérifier le stock avant de créer la commande
     console.log("🔍 Vérification des stocks pour tous les articles...");
     const outOfStockItems = [];
     
@@ -123,7 +125,7 @@ router.post('/confirm-order', async (req, res) => {
     await customer.save();
     console.log("🔄 Commande associée au client");
 
-    // NOUVEAU : Réduire le stock pour chaque produit commandé
+    // Réduire le stock pour chaque produit commandé
     console.log("📦 Mise à jour des stocks...");
     const stockUpdates = [];
     
@@ -156,6 +158,17 @@ router.post('/confirm-order', async (req, res) => {
     }
     
     console.log("✅ Stocks mis à jour avec succès:", stockUpdates);
+
+    // NOUVEAU: Envoyer l'email de confirmation au client
+    try {
+      console.log(`📧 Envoi de l'email de confirmation au client: ${customer.email}`);
+      // Utilisation de la fonction d'envoi d'email avec le vrai client et la vraie commande
+      await sendOrderConfirmation(customer, newOrder);
+      console.log(`✉️ Email de confirmation envoyé avec succès au client: ${customer.email}`);
+    } catch (emailError) {
+      console.error("❌ Erreur lors de l'envoi de l'email de confirmation:", emailError);
+      // On continue même si l'email échoue pour ne pas bloquer la commande
+    }
 
     // Répondre avec les données de la commande
     console.log("📬 Envoi de la réponse");
