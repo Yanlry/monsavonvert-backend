@@ -41,7 +41,7 @@ app.use('/products', productsRouter);
 app.use('/customers', customersRouter);
 app.use('/stripe', stripeRoutes);
 app.use('/api', stripeCheckoutRoutes);
-app.use('/api', confirmOrderRouter); // Ajouter la nouvelle route avec le préfixe /api
+app.use('/api', confirmOrderRouter); 
 app.use('/orders', ordersRouter);
 
 module.exports = app;
