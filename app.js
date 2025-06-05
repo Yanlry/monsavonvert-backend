@@ -16,12 +16,12 @@ var productsRouter = require('./routes/products');
 var customersRouter = require('./routes/customers');
 var stripeRoutes = require('./routes/stripe-webhook');
 var stripeCheckoutRoutes = require('./routes/create-checkout');
-var confirmOrderRouter = require('./routes/confirm-order'); // Nouvelle route
+var confirmOrderRouter = require('./routes/confirm-order');  
 var ordersRouter = require('./routes/orders');
 
 var app = express();
 
-const PORT = process.env.PORT || 8888; // Utilise 8888 comme port par défaut
+const PORT = process.env.PORT || 8888;  
 app.listen(PORT, () => {
   console.log(`✅ Server is running on http://localhost:${PORT}`);
 });
