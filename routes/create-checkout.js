@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-// Remarque importante : la route est juste /create-checkout, pas /api/create-checkout
-// car le préfixe /api est déjà ajouté dans app.js
 router.post("/create-checkout", express.json(), async (req, res) => {
   try {
     console.log("📌 Requête de création de session Stripe reçue");
