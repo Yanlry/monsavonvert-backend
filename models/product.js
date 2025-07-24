@@ -11,9 +11,14 @@ const productSchema = mongoose.Schema({
   images: [{ type: String }], // Tableau pouvant contenir jusqu'à 5 URLs d'images
   reviews: [
     {
-      user: { type: String, required: false }, // Utilisateur facultatif
+      // MODIFICATION : Rendre ces champs optionnels pour compatibilité avec anciens avis
+      userId: { type: String, required: false }, // Optionnel pour anciens avis
+      firstName: { type: String, required: false }, // Optionnel pour anciens avis
+      lastName: { type: String, required: false }, // Optionnel pour anciens avis
+      user: { type: String, required: false }, // Nom complet (pour compatibilité)
       comment: { type: String, required: true },
       rating: { type: Number, required: true, min: 1, max: 5 },
+      createdAt: { type: Date, default: Date.now }, // Date de création de l'avis
     },
   ],
   createdAt: { type: Date, default: Date.now },
