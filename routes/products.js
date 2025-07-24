@@ -4,28 +4,60 @@ const Product = require('../models/product'); // Importer le modèle Product
 const multer = require('multer'); // Importer multer
 const { CloudinaryStorage } = require('multer-storage-cloudinary'); // Importer CloudinaryStorage
 const cloudinary = require('cloudinary').v2; // Importer Cloudinary
+const jwt = require('jsonwebtoken'); // AJOUT : Import de JWT pour l'authentification
 
-// Configurer Cloudinary
+// Configurer Cloudinary (INCHANGÉ)
 cloudinary.config({
-  cloud_name: 'dk9tkqs0t', // Remplacez par votre Cloud Name
-  api_key: '871371399894135',       // Remplacez par votre API Key
-  api_secret: '47uVVjxagVkZ58AF8d_jhWdY8-g', // Remplacez par votre API Secret
+  cloud_name: 'dk9tkqs0t',
+  api_key: '871371399894135',
+  api_secret: '47uVVjxagVkZ58AF8d_jhWdY8-g',
 });
 
-// Configurer le stockage avec multer-storage-cloudinary
+// Configurer le stockage avec multer-storage-cloudinary (INCHANGÉ)
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'products', // Dossier dans lequel les images seront stockées sur Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png'], // Formats autorisés
+    folder: 'products',
+    allowed_formats: ['jpg', 'jpeg', 'png'],
   },
 });
 
-const upload = multer({ storage }); // Utiliser multer avec CloudinaryStorage
+const upload = multer({ storage });
 
-// Ajouter un produit
-router.post('/add', upload.array('images', 5), (req, res) => { // Accepter jusqu'à 5 images
-    console.log("Fichiers reçus:", req.files); // Log pour déboguer
+// AJOUT : Middleware d'authentification
+const authenticateToken = (req, res, next) => {
+  console.log('🔐 Vérification du token d\'authentification');
+  
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    console.error('❌ Token manquant');
+    return res.status(401).json({ 
+      result: false, 
+      error: 'Token d\'authentification requis' 
+    });
+  }
+
+  // ⚠️ IMPORTANT : Remplace 'TON_JWT_SECRET' par ta vraie clé secrète
+  jwt.verify(token, process.env.JWT_SECRET || 'TON_JWT_SECRET', (err, user) => {
+    if (err) {
+      console.error('❌ Token invalide:', err.message);
+      return res.status(403).json({ 
+        result: false, 
+        error: 'Token invalide' 
+      });
+    }
+    
+    console.log('✅ Utilisateur authentifié:', user);
+    req.user = user;
+    next();
+  });
+};
+
+// Ajouter un produit (INCHANGÉ)
+router.post('/add', upload.array('images', 5), (req, res) => {
+    console.log("Fichiers reçus:", req.files);
   
     const { title, description, price, characteristics, stock, ingredients, usageTips } = req.body;
   
@@ -33,10 +65,9 @@ router.post('/add', upload.array('images', 5), (req, res) => { // Accepter jusqu
       return res.status(400).json({ result: false, error: 'Champs obligatoires manquants.' });
     }
   
-    // Extraire les URLs des images téléchargées
     const imageUrls = req.files ? req.files.map(file => file.path) : [];
     
-    console.log("URLs des images:", imageUrls); // Log pour déboguer
+    console.log("URLs des images:", imageUrls);
   
     const newProduct = new Product({
       title,
@@ -46,7 +77,7 @@ router.post('/add', upload.array('images', 5), (req, res) => { // Accepter jusqu
       stock,
       ingredients,
       usageTips,
-      images: imageUrls, // Stocker le tableau d'URLs
+      images: imageUrls,
     });
   
     newProduct.save()
@@ -57,19 +88,19 @@ router.post('/add', upload.array('images', 5), (req, res) => { // Accepter jusqu
       });
   });
 
-// Récupérer tous les produits
+// Récupérer tous les produits (INCHANGÉ)
 router.get('/', async (req, res) => {
   try {
     const products = await Product.find();
-    console.log('Produits récupérés :', products); // 👈 Ajout pour debug
+    console.log('Produits récupérés :', products);
     res.status(200).json({ result: true, products });
   } catch (err) {
-    console.error("❌ Erreur MongoDB :", err); // 👈 Log utile pour Render logs
+    console.error("❌ Erreur MongoDB :", err);
     res.status(500).json({ result: false, error: 'Erreur lors de la récupération des produits.' });
   }
 });
 
-// Récupérer un produit par ID
+// Récupérer un produit par ID (INCHANGÉ)
 router.get('/:id', (req, res) => {
   Product.findById(req.params.id)
     .then(product => {
@@ -81,27 +112,23 @@ router.get('/:id', (req, res) => {
     .catch(err => res.status(500).json({ result: false, error: 'Erreur lors de la récupération du produit.' }));
 });
 
-// Mettre à jour un produit
+// Mettre à jour un produit (INCHANGÉ)
 router.put('/update/:id', upload.array('images', 5), async (req, res) => {
   try {
-    console.log("Données reçues :", req.body); // Log des données reçues
-    console.log("Fichiers reçus :", req.files); // Log des fichiers reçus
+    console.log("Données reçues :", req.body);
+    console.log("Fichiers reçus :", req.files);
 
     const { title, description, price, stock, characteristics, ingredients, usageTips } = req.body;
 
-    // Parser les images existantes
     let existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : [];
     console.log("Images existantes avant filtrage :", existingImages);
 
-    // Filtrer les images existantes pour ne garder que les chaînes de caractères valides
     existingImages = existingImages.filter((image) => typeof image === 'string' && image.trim() !== '');
     console.log("Images existantes après filtrage :", existingImages);
 
-    // Ajouter les nouvelles images
     const newImages = req.files.map((file) => file.path);
     console.log("Nouvelles images :", newImages);
 
-    // Mettre à jour le produit
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       {
@@ -112,7 +139,7 @@ router.put('/update/:id', upload.array('images', 5), async (req, res) => {
         characteristics,
         ingredients,
         usageTips,
-        images: [...existingImages, ...newImages], // Conserver les anciennes images et ajouter les nouvelles
+        images: [...existingImages, ...newImages],
       },
       { new: true }
     );
@@ -124,17 +151,15 @@ router.put('/update/:id', upload.array('images', 5), async (req, res) => {
   }
 });
   
-// Supprimer un produit
+// Supprimer un produit (INCHANGÉ)
 router.delete('/delete/:id', async (req, res) => {
   try {
-    // Récupérer le produit pour supprimer ses images
     const product = await Product.findById(req.params.id);
     
     if (!product) {
       return res.status(404).json({ result: false, error: 'Produit introuvable.' });
     }
     
-    // Supprimer les images de Cloudinary
     if (product.images && product.images.length > 0) {
       console.log("Suppression des images du produit:", product.images);
       
@@ -145,12 +170,10 @@ router.delete('/delete/:id', async (req, res) => {
           console.log("Image supprimée:", publicId);
         } catch (error) {
           console.error("Erreur lors de la suppression de l'image:", error);
-          // Continuer même en cas d'erreur
         }
       }
     }
     
-    // Supprimer le produit de la base de données
     await Product.findByIdAndDelete(req.params.id);
     
     res.status(200).json({ result: true, message: 'Produit supprimé avec succès.' });
@@ -160,42 +183,193 @@ router.delete('/delete/:id', async (req, res) => {
   }
 });
 
-// Ajouter un commentaire à un produit
-router.post('/:id/review', async (req, res) => {
-  try {
-    console.log("Données reçues par le backend :", req.body);
+// MODIFICATION : Ajouter un avis (avec authentification)
+router.post('/:id/review', authenticateToken, async (req, res) => {
+  console.log('📝 Ajout d\'un nouvel avis');
+  console.log('🔍 Product ID:', req.params.id);
+  console.log('👤 Utilisateur:', req.user);
+  console.log('📦 Données reçues:', req.body);
 
+  try {
     const { firstName, lastName, comment, rating } = req.body;
 
-    // Vérifiez que tous les champs sont présents
+    // Validation des données
     if (!firstName || !lastName || !comment || !rating) {
-      return res.status(400).json({ result: false, error: 'Champs obligatoires manquants.' });
+      console.error('❌ Données manquantes');
+      return res.status(400).json({
+        result: false,
+        error: 'Tous les champs sont obligatoires'
+      });
     }
 
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({ result: false, error: 'La note doit être comprise entre 1 et 5.' });
+      console.error('❌ Note invalide:', rating);
+      return res.status(400).json({
+        result: false,
+        error: 'La note doit être entre 1 et 5'
+      });
     }
 
+    if (comment.trim().length < 10) {
+      console.error('❌ Commentaire trop court');
+      return res.status(400).json({
+        result: false,
+        error: 'Le commentaire doit contenir au moins 10 caractères'
+      });
+    }
+
+    // Rechercher le produit
     const product = await Product.findById(req.params.id);
     if (!product) {
-      return res.status(404).json({ result: false, error: 'Produit introuvable.' });
+      console.error('❌ Produit non trouvé');
+      return res.status(404).json({
+        result: false,
+        error: 'Produit non trouvé'
+      });
     }
 
-    // Concaténer firstName et lastName pour le champ user
-    const user = `${firstName} ${lastName}`;
+    // Créer le nouvel avis avec userId pour la suppression
+    const newReview = {
+      userId: req.user.userId || req.user.id, // IMPORTANT : ID de l'utilisateur
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      user: `${firstName.trim()} ${lastName.trim()}`, // Pour compatibilité
+      rating: parseInt(rating, 10),
+      comment: comment.trim(),
+      createdAt: new Date()
+    };
 
-    product.reviews.push({
-      user,
-      comment,
-      rating,
-    });
+    console.log('✅ Nouvel avis créé:', newReview);
 
+    // Initialiser reviews s'il n'existe pas
+    if (!product.reviews) {
+      product.reviews = [];
+    }
+
+    // Ajouter l'avis
+    product.reviews.push(newReview);
     await product.save();
 
-    res.status(201).json({ result: true, message: 'Commentaire ajouté avec succès.', product });
-  } catch (err) {
-    console.error('Erreur lors de l\'ajout du commentaire :', err);
-    res.status(500).json({ result: false, error: 'Erreur lors de l\'ajout du commentaire.' });
+    console.log('✅ Avis sauvegardé avec succès');
+
+    res.json({
+      result: true,
+      review: newReview,
+      message: 'Avis ajouté avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'ajout de l\'avis:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur serveur lors de l\'ajout de l\'avis'
+    });
+  }
+});
+
+// NOUVEAU : Supprimer un avis
+router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res) => {
+  console.log('🗑️ Tentative de suppression d\'avis');
+  console.log('🔍 Product ID:', req.params.productId);
+  console.log('🔍 Review ID:', req.params.reviewId);
+  console.log('👤 Utilisateur:', req.user);
+
+  try {
+    // Rechercher le produit
+    const product = await Product.findById(req.params.productId);
+    if (!product) {
+      console.error('❌ Produit non trouvé');
+      return res.status(404).json({
+        result: false,
+        error: 'Produit non trouvé'
+      });
+    }
+
+    // Rechercher l'avis
+    const reviewIndex = product.reviews.findIndex(
+      review => review._id.toString() === req.params.reviewId
+    );
+
+    if (reviewIndex === -1) {
+      console.error('❌ Avis non trouvé');
+      return res.status(404).json({
+        result: false,
+        error: 'Avis non trouvé'
+      });
+    }
+
+    const review = product.reviews[reviewIndex];
+    console.log('🔍 Avis trouvé:', review);
+
+    // Vérifier les droits de suppression
+    const currentUserId = req.user.userId || req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    const isAuthor = review.userId === currentUserId;
+
+    console.log('🔐 Vérification des droits:', {
+      currentUserId,
+      reviewUserId: review.userId,
+      isAdmin,
+      isAuthor,
+      userRole: req.user.role
+    });
+
+    if (!isAdmin && !isAuthor) {
+      console.error('❌ Droits insuffisants');
+      return res.status(403).json({
+        result: false,
+        error: 'Vous n\'avez pas les droits pour supprimer cet avis'
+      });
+    }
+
+    // Supprimer l'avis
+    product.reviews.splice(reviewIndex, 1);
+    await product.save();
+
+    console.log('✅ Avis supprimé avec succès');
+
+    res.json({
+      result: true,
+      message: 'Avis supprimé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la suppression de l\'avis:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur serveur lors de la suppression de l\'avis'
+    });
+  }
+});
+
+// NOUVEAU : Récupérer tous les avis d'un produit (optionnel)
+router.get('/:id/reviews', async (req, res) => {
+  console.log('📋 Récupération des avis du produit:', req.params.id);
+
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      console.error('❌ Produit non trouvé');
+      return res.status(404).json({
+        result: false,
+        error: 'Produit non trouvé'
+      });
+    }
+
+    console.log('✅ Avis récupérés:', product.reviews?.length || 0, 'avis');
+
+    res.json({
+      result: true,
+      reviews: product.reviews || [],
+      totalReviews: product.reviews?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des avis:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur serveur lors de la récupération des avis'
+    });
   }
 });
 
