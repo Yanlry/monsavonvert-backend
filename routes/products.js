@@ -1,66 +1,116 @@
+// Fichier : routes/products.js
+// 🔒 Version sécurisée avec variables d'environnement
+
+// ✅ Charger les variables d'environnement AVANT tout le reste
+require('dotenv').config();
+
 const express = require('express');
 const router = express.Router();
-const Product = require('../models/product'); // Importer le modèle Product
-const User = require('../models/user'); // AJOUT : Import du modèle User pour l'authentification
-const multer = require('multer'); // Importer multer
-const { CloudinaryStorage } = require('multer-storage-cloudinary'); // Importer CloudinaryStorage
-const cloudinary = require('cloudinary').v2; // Importer Cloudinary
+const Product = require('../models/product'); // Assure-toi que ce chemin est correct
+const User = require('../models/user'); // Import du modèle User
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
-// Configurer Cloudinary
+// 🔍 LOGS DE DÉBOGAGE POUR LES VARIABLES D'ENVIRONNEMENT
+console.log('🔧 Vérification des variables d\'environnement Cloudinary :');
+console.log('✅ CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? 'Défini' : '❌ MANQUANT');
+console.log('✅ API_KEY:', process.env.CLOUDINARY_API_KEY ? 'Défini' : '❌ MANQUANT');
+console.log('✅ API_SECRET:', process.env.CLOUDINARY_API_SECRET ? 'Défini' : '❌ MANQUANT');
+
+// 🛡️ CONFIGURATION SÉCURISÉE DE CLOUDINARY
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('❌ ERREUR CRITIQUE : Variables Cloudinary manquantes dans le fichier .env');
+  console.error('📝 Assure-toi d\'avoir un fichier .env avec :');
+  console.error('   - CLOUDINARY_CLOUD_NAME=ton_cloud_name');
+  console.error('   - CLOUDINARY_API_KEY=ton_api_key');
+  console.error('   - CLOUDINARY_API_SECRET=ton_api_secret');
+  process.exit(1); // Arrêter l'application si les credentials manquent
+}
+
 cloudinary.config({
-  cloud_name: 'dk9tkqs0t',
-  api_key: '871371399894135',
-  api_secret: '47uVVjxagVkZ58AF8d_jhWdY8-g',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configurer le stockage avec multer-storage-cloudinary
+console.log('✅ Cloudinary configuré avec succès !');
+
+// 📁 CONFIGURATION DU STOCKAGE AVEC GESTION D'ERREURS
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'products',
-    allowed_formats: ['jpg', 'jpeg', 'png'],
+    folder: 'products', // Dossier sur Cloudinary
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'], // Formats autorisés
+    transformation: [
+      { width: 1000, height: 1000, crop: 'limit' }, // Limiter la taille
+      { quality: 'auto' } // Optimisation automatique
+    ]
   },
 });
 
-const upload = multer({ storage });
+// 📤 CONFIGURATION DE MULTER AVEC LIMITES
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Limite à 5MB par fichier
+    files: 5 // Maximum 5 fichiers
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('📋 Vérification du fichier:', file.originalname, 'Type:', file.mimetype);
+    
+    // Vérifier le type MIME
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      console.error('❌ Type de fichier non autorisé:', file.mimetype);
+      cb(new Error('Seules les images sont autorisées'), false);
+    }
+  }
+});
 
-// MIDDLEWARE D'AUTHENTIFICATION CORRIGÉ - Compatible avec vos tokens uid2
+// 🔐 MIDDLEWARE D'AUTHENTIFICATION
 const authenticateToken = async (req, res, next) => {
-  console.log('🔐 Vérification du token d\'authentification');
+  console.log('🔐 === DÉBUT AUTHENTIFICATION ===');
+  console.log('🕐 Timestamp:', new Date().toISOString());
   
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
+  console.log('📋 Auth header présent:', !!authHeader);
+  
+  const token = authHeader && authHeader.split(' ')[1];
+  
   if (!token) {
-    console.error('❌ Token manquant');
+    console.error('❌ Token manquant dans l\'en-tête Authorization');
+    console.log('💡 Format attendu: Authorization: Bearer YOUR_TOKEN');
     return res.status(401).json({ 
       result: false, 
-      error: 'Token d\'authentification requis' 
+      error: 'Token d\'authentification requis',
+      debug: 'Aucun token fourni dans l\'en-tête Authorization'
     });
   }
 
   try {
     console.log('🔍 Recherche utilisateur avec token:', token.substring(0, 10) + '...');
     
-    // Chercher l'utilisateur par token (même méthode que /users/me)
     const user = await User.findOne({ token: token });
     
     if (!user) {
-      console.error('❌ Utilisateur non trouvé avec ce token');
+      console.error('❌ Aucun utilisateur trouvé avec ce token');
       return res.status(403).json({ 
         result: false, 
-        error: 'Token invalide' 
+        error: 'Token invalide',
+        debug: 'Utilisateur non trouvé en base de données'
       });
     }
     
-    console.log('✅ Utilisateur authentifié:', {
+    console.log('✅ Utilisateur authentifié avec succès:', {
       id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
+      email: user.email,
       role: user.role
     });
     
-    // Ajouter les informations utilisateur à la requête (format exact attendu)
     req.user = {
       userId: user._id.toString(),
       id: user._id.toString(),
@@ -70,180 +120,377 @@ const authenticateToken = async (req, res, next) => {
       role: user.role || 'user'
     };
     
+    console.log('🔐 === FIN AUTHENTIFICATION RÉUSSIE ===');
     next();
+    
   } catch (error) {
-    console.error('❌ Erreur lors de la vérification du token:', error);
+    console.error('❌ Erreur lors de l\'authentification:', error);
     return res.status(500).json({ 
       result: false, 
-      error: 'Erreur serveur lors de l\'authentification' 
+      error: 'Erreur serveur lors de l\'authentification',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
-// Ajouter un produit
-router.post('/add', upload.array('images', 5), (req, res) => {
-  console.log("Fichiers reçus:", req.files);
+// 📤 AJOUTER UN PRODUIT
+router.post('/add', upload.array('images', 5), async (req, res) => {
+  console.log('📤 === AJOUT D\'UN NOUVEAU PRODUIT ===');
+  console.log('📋 Données reçues:', req.body);
+  console.log('🖼️ Fichiers reçus:', req.files?.length || 0, 'fichier(s)');
 
-  const { title, description, price, characteristics, stock, ingredients, usageTips } = req.body;
-
-  if (!title || !description || !price || stock === undefined) {
-    return res.status(400).json({ result: false, error: 'Champs obligatoires manquants.' });
-  }
-
-  const imageUrls = req.files ? req.files.map(file => file.path) : [];
-  
-  console.log("URLs des images:", imageUrls);
-
-  const newProduct = new Product({
-    title,
-    description,
-    price,
-    characteristics,
-    stock,
-    ingredients,
-    usageTips,
-    images: imageUrls,
-  });
-
-  newProduct.save()
-    .then(product => res.status(201).json({ result: true, product }))
-    .catch(err => {
-      console.error("Erreur lors de l'enregistrement:", err);
-      res.status(500).json({ result: false, error: 'Erreur lors de l\'ajout du produit.' });
-    });
-});
-
-// Récupérer tous les produits
-router.get('/', async (req, res) => {
   try {
-    const products = await Product.find();
-    console.log('Produits récupérés :', products.length, 'produits');
-    res.status(200).json({ result: true, products });
-  } catch (err) {
-    console.error("❌ Erreur MongoDB :", err);
-    res.status(500).json({ result: false, error: 'Erreur lors de la récupération des produits.' });
-  }
-});
+    const { title, description, price, characteristics, stock, ingredients, usageTips } = req.body;
 
-// Récupérer un produit par ID
-router.get('/:id', (req, res) => {
-  Product.findById(req.params.id)
-    .then(product => {
-      if (!product) {
-        return res.status(404).json({ result: false, error: 'Produit introuvable.' });
-      }
-      res.status(200).json({ result: true, product });
-    })
-    .catch(err => res.status(500).json({ result: false, error: 'Erreur lors de la récupération du produit.' }));
-});
+    // ✅ VALIDATION DES DONNÉES
+    const missingFields = [];
+    if (!title) missingFields.push('title');
+    if (!description) missingFields.push('description');
+    if (!price) missingFields.push('price');
+    if (stock === undefined || stock === null) missingFields.push('stock');
 
-// Mettre à jour un produit
-router.put('/update/:id', upload.array('images', 5), async (req, res) => {
-  try {
-    console.log("Données reçues :", req.body);
-    console.log("Fichiers reçus :", req.files);
-
-    const { title, description, price, stock, characteristics, ingredients, usageTips } = req.body;
-
-    let existingImages = req.body.existingImages ? JSON.parse(req.body.existingImages) : [];
-    console.log("Images existantes avant filtrage :", existingImages);
-
-    existingImages = existingImages.filter((image) => typeof image === 'string' && image.trim() !== '');
-    console.log("Images existantes après filtrage :", existingImages);
-
-    const newImages = req.files.map((file) => file.path);
-    console.log("Nouvelles images :", newImages);
-
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      {
-        title,
-        description,
-        price,
-        stock,
-        characteristics,
-        ingredients,
-        usageTips,
-        images: [...existingImages, ...newImages],
-      },
-      { new: true }
-    );
-
-    res.status(200).json({ result: true, product: updatedProduct });
-  } catch (err) {
-    console.error("Erreur lors de la mise à jour :", err);
-    res.status(500).json({ result: false, error: 'Erreur lors de la mise à jour du produit.' });
-  }
-});
-
-// Supprimer un produit
-router.delete('/delete/:id', async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    
-    if (!product) {
-      return res.status(404).json({ result: false, error: 'Produit introuvable.' });
+    if (missingFields.length > 0) {
+      console.error('❌ Champs manquants:', missingFields);
+      return res.status(400).json({ 
+        result: false, 
+        error: 'Champs obligatoires manquants',
+        missingFields: missingFields
+      });
     }
+
+    // 🖼️ TRAITEMENT DES IMAGES
+    const imageUrls = req.files ? req.files.map(file => {
+      console.log('✅ Image uploadée:', file.path);
+      return file.path;
+    }) : [];
     
-    if (product.images && product.images.length > 0) {
-      console.log("Suppression des images du produit:", product.images);
-      
-      for (const imageUrl of product.images) {
+    console.log('📊 Résumé du produit à créer:', {
+      title,
+      price: parseFloat(price),
+      stock: parseInt(stock),
+      imagesCount: imageUrls.length
+    });
+
+    // 💾 CRÉATION DU PRODUIT
+    const newProduct = new Product({
+      title: title.trim(),
+      description: description.trim(),
+      price: parseFloat(price),
+      characteristics: characteristics ? characteristics.trim() : '',
+      stock: parseInt(stock),
+      ingredients: ingredients ? ingredients.trim() : '',
+      usageTips: usageTips ? usageTips.trim() : '',
+      images: imageUrls,
+      createdAt: new Date()
+    });
+
+    const savedProduct = await newProduct.save();
+    
+    console.log('✅ Produit créé avec succès, ID:', savedProduct._id);
+    
+    res.status(201).json({ 
+      result: true, 
+      product: savedProduct,
+      message: `Produit "${title}" créé avec ${imageUrls.length} image(s)`
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'ajout du produit:', error);
+    
+    // 🧹 NETTOYAGE : Supprimer les images uploadées en cas d'erreur
+    if (req.files && req.files.length > 0) {
+      console.log('🧹 Nettoyage des images uploadées suite à l\'erreur...');
+      for (const file of req.files) {
         try {
-          const publicId = imageUrl.split('/').pop().split('.')[0];
-          await cloudinary.uploader.destroy(publicId);
-          console.log("Image supprimée:", publicId);
-        } catch (error) {
-          console.error("Erreur lors de la suppression de l'image:", error);
+          const publicId = file.path.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(`products/${publicId}`);
+          console.log('🗑️ Image supprimée:', publicId);
+        } catch (cleanupError) {
+          console.error('⚠️ Erreur lors du nettoyage:', cleanupError.message);
         }
       }
     }
     
-    await Product.findByIdAndDelete(req.params.id);
-    
-    res.status(200).json({ result: true, message: 'Produit supprimé avec succès.' });
-  } catch (err) {
-    console.error("Erreur lors de la suppression:", err);
-    res.status(500).json({ result: false, error: 'Erreur lors de la suppression du produit.' });
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de l\'ajout du produit',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
-// AJOUTER UN AVIS - Avec authentification corrigée
+// 📋 RÉCUPÉRER TOUS LES PRODUITS
+router.get('/', async (req, res) => {
+  console.log('📋 === RÉCUPÉRATION DE TOUS LES PRODUITS ===');
+  
+  try {
+    const startTime = Date.now();
+    const products = await Product.find().sort({ createdAt: -1 }); // Plus récents en premier
+    const endTime = Date.now();
+    
+    console.log('✅ Produits récupérés:', products.length, 'produit(s)');
+    console.log('⏱️ Temps de requête:', endTime - startTime, 'ms');
+    
+    // 📊 STATISTIQUES
+    const stats = {
+      total: products.length,
+      withImages: products.filter(p => p.images && p.images.length > 0).length,
+      inStock: products.filter(p => p.stock > 0).length,
+      outOfStock: products.filter(p => p.stock === 0).length
+    };
+    
+    console.log('📊 Statistiques:', stats);
+    
+    res.status(200).json({ 
+      result: true, 
+      products,
+      stats: stats
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des produits:', error);
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de la récupération des produits',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 🔍 RÉCUPÉRER UN PRODUIT PAR ID
+router.get('/:id', async (req, res) => {
+  console.log('🔍 === RÉCUPÉRATION PRODUIT PAR ID ===');
+  console.log('🆔 ID recherché:', req.params.id);
+
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      console.error('❌ Produit non trouvé avec l\'ID:', req.params.id);
+      return res.status(404).json({ 
+        result: false, 
+        error: 'Produit introuvable',
+        productId: req.params.id
+      });
+    }
+    
+    console.log('✅ Produit trouvé:', {
+      title: product.title,
+      stock: product.stock,
+      images: product.images?.length || 0,
+      reviews: product.reviews?.length || 0
+    });
+    
+    res.status(200).json({ 
+      result: true, 
+      product 
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du produit:', error);
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de la récupération du produit',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// ✏️ METTRE À JOUR UN PRODUIT
+router.put('/update/:id', upload.array('images', 5), async (req, res) => {
+  console.log('✏️ === MISE À JOUR PRODUIT ===');
+  console.log('🆔 ID produit:', req.params.id);
+  console.log('📋 Données reçues:', req.body);
+  console.log('🖼️ Nouveaux fichiers:', req.files?.length || 0);
+
+  try {
+    const { title, description, price, stock, characteristics, ingredients, usageTips } = req.body;
+
+    // 🖼️ GESTION DES IMAGES EXISTANTES
+    let existingImages = [];
+    if (req.body.existingImages) {
+      try {
+        existingImages = JSON.parse(req.body.existingImages);
+        console.log('📋 Images existantes parsées:', existingImages.length);
+      } catch (parseError) {
+        console.error('❌ Erreur parsing existingImages:', parseError);
+        existingImages = [];
+      }
+    }
+
+    // Filtrer les images valides
+    existingImages = existingImages.filter(image => 
+      typeof image === 'string' && image.trim() !== ''
+    );
+    
+    console.log('✅ Images existantes valides:', existingImages.length);
+
+    // 🖼️ NOUVELLES IMAGES
+    const newImages = req.files ? req.files.map(file => {
+      console.log('✅ Nouvelle image uploadée:', file.path);
+      return file.path;
+    }) : [];
+
+    console.log('📊 Résumé images:', {
+      existantes: existingImages.length,
+      nouvelles: newImages.length,
+      total: existingImages.length + newImages.length
+    });
+
+    // 💾 MISE À JOUR DU PRODUIT
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      {
+        title: title?.trim(),
+        description: description?.trim(),
+        price: price ? parseFloat(price) : undefined,
+        stock: stock !== undefined ? parseInt(stock) : undefined,
+        characteristics: characteristics?.trim(),
+        ingredients: ingredients?.trim(),
+        usageTips: usageTips?.trim(),
+        images: [...existingImages, ...newImages],
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true } // Retourner le document mis à jour + validation
+    );
+
+    if (!updatedProduct) {
+      console.error('❌ Produit non trouvé pour mise à jour');
+      return res.status(404).json({
+        result: false,
+        error: 'Produit non trouvé'
+      });
+    }
+
+    console.log('✅ Produit mis à jour avec succès:', {
+      id: updatedProduct._id,
+      title: updatedProduct.title,
+      imagesTotal: updatedProduct.images.length
+    });
+
+    res.status(200).json({ 
+      result: true, 
+      product: updatedProduct,
+      message: 'Produit mis à jour avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la mise à jour:', error);
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de la mise à jour du produit',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 🗑️ SUPPRIMER UN PRODUIT
+router.delete('/delete/:id', async (req, res) => {
+  console.log('🗑️ === SUPPRESSION PRODUIT ===');
+  console.log('🆔 ID à supprimer:', req.params.id);
+
+  try {
+    const product = await Product.findById(req.params.id);
+    
+    if (!product) {
+      console.error('❌ Produit non trouvé pour suppression');
+      return res.status(404).json({ 
+        result: false, 
+        error: 'Produit introuvable' 
+      });
+    }
+    
+    console.log('📋 Produit à supprimer:', {
+      title: product.title,
+      images: product.images?.length || 0
+    });
+    
+    // 🖼️ SUPPRESSION DES IMAGES DE CLOUDINARY
+    if (product.images && product.images.length > 0) {
+      console.log('🧹 Suppression des images de Cloudinary...');
+      
+      for (const imageUrl of product.images) {
+        try {
+          // Extraire le public_id de l'URL Cloudinary
+          const urlParts = imageUrl.split('/');
+          const fileWithExtension = urlParts[urlParts.length - 1];
+          const publicId = `products/${fileWithExtension.split('.')[0]}`;
+          
+          console.log('🗑️ Suppression image:', publicId);
+          
+          const result = await cloudinary.uploader.destroy(publicId);
+          
+          if (result.result === 'ok') {
+            console.log('✅ Image supprimée avec succès:', publicId);
+          } else {
+            console.warn('⚠️ Image peut-être déjà supprimée:', publicId, result);
+          }
+          
+        } catch (imageError) {
+          console.error('❌ Erreur suppression image:', imageError.message);
+          // Continue malgré l'erreur pour supprimer les autres images
+        }
+      }
+    }
+    
+    // 🗑️ SUPPRESSION DU PRODUIT DE LA BASE
+    await Product.findByIdAndDelete(req.params.id);
+    
+    console.log('✅ Produit supprimé avec succès de la base de données');
+    
+    res.status(200).json({ 
+      result: true, 
+      message: `Produit "${product.title}" supprimé avec succès`,
+      deletedImages: product.images?.length || 0
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la suppression:', error);
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de la suppression du produit',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 📝 AJOUTER UN AVIS
 router.post('/:id/review', authenticateToken, async (req, res) => {
-  console.log('📝 Ajout d\'un nouvel avis');
-  console.log('🔍 Product ID:', req.params.id);
-  console.log('👤 Utilisateur authentifié:', req.user);
-  console.log('📦 Données reçues:', req.body);
+  console.log('📝 === AJOUT NOUVEL AVIS ===');
+  console.log('🆔 Product ID:', req.params.id);
+  console.log('👤 Utilisateur:', req.user?.firstName, req.user?.lastName);
+  console.log('📦 Données avis:', req.body);
 
   try {
     const { firstName, lastName, comment, rating } = req.body;
 
-    // Validation des données
-    if (!firstName || !lastName || !comment || !rating) {
-      console.error('❌ Données manquantes:', { firstName, lastName, comment, rating });
+    // ✅ VALIDATION COMPLÈTE
+    const errors = [];
+    
+    if (!firstName?.trim()) errors.push('Prénom requis');
+    if (!lastName?.trim()) errors.push('Nom requis');
+    if (!comment?.trim()) errors.push('Commentaire requis');
+    if (!rating) errors.push('Note requise');
+    
+    if (comment?.trim().length < 10) {
+      errors.push('Le commentaire doit contenir au moins 10 caractères');
+    }
+    
+    const numRating = parseInt(rating, 10);
+    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+      errors.push('La note doit être entre 1 et 5');
+    }
+
+    if (errors.length > 0) {
+      console.error('❌ Erreurs de validation:', errors);
       return res.status(400).json({
         result: false,
-        error: 'Tous les champs sont obligatoires (firstName, lastName, comment, rating)'
+        error: 'Données invalides',
+        errors: errors
       });
     }
 
-    if (rating < 1 || rating > 5) {
-      console.error('❌ Note invalide:', rating);
-      return res.status(400).json({
-        result: false,
-        error: 'La note doit être entre 1 et 5'
-      });
-    }
-
-    if (comment.trim().length < 10) {
-      console.error('❌ Commentaire trop court');
-      return res.status(400).json({
-        result: false,
-        error: 'Le commentaire doit contenir au moins 10 caractères'
-      });
-    }
-
-    // Rechercher le produit
+    // 🔍 VÉRIFICATION PRODUIT
     const product = await Product.findById(req.params.id);
     if (!product) {
       console.error('❌ Produit non trouvé');
@@ -253,57 +500,61 @@ router.post('/:id/review', authenticateToken, async (req, res) => {
       });
     }
 
-    // Créer le nouvel avis avec toutes les informations nécessaires
+    // 📝 CRÉATION AVIS
     const newReview = {
-      userId: req.user.userId || req.user.id, // CRUCIAL : ID pour la suppression
+      userId: req.user.userId || req.user.id,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      user: `${firstName.trim()} ${lastName.trim()}`, // Pour compatibilité
-      rating: parseInt(rating, 10),
+      user: `${firstName.trim()} ${lastName.trim()}`,
+      rating: numRating,
       comment: comment.trim(),
       createdAt: new Date()
     };
 
-    console.log('✅ Nouvel avis créé avec userId:', newReview);
+    console.log('✅ Nouvel avis créé:', {
+      userId: newReview.userId,
+      author: newReview.user,
+      rating: newReview.rating,
+      commentLength: newReview.comment.length
+    });
 
-    // Initialiser reviews s'il n'existe pas
+    // 💾 SAUVEGARDE
     if (!product.reviews) {
       product.reviews = [];
     }
 
-    // Ajouter l'avis
     product.reviews.push(newReview);
     await product.save();
 
-    // Récupérer l'avis ajouté avec son _id généré par MongoDB
     const addedReview = product.reviews[product.reviews.length - 1];
 
-    console.log('✅ Avis sauvegardé avec succès, _id:', addedReview._id);
+    console.log('✅ Avis sauvegardé, _id:', addedReview._id);
 
     res.json({
       result: true,
-      review: addedReview, // Retourner l'avis complet avec _id
-      message: 'Avis ajouté avec succès'
+      review: addedReview,
+      message: 'Avis ajouté avec succès',
+      productTitle: product.title
     });
 
   } catch (error) {
-    console.error('❌ Erreur lors de l\'ajout de l\'avis:', error);
+    console.error('❌ Erreur ajout avis:', error);
     res.status(500).json({
       result: false,
-      error: 'Erreur serveur lors de l\'ajout de l\'avis'
+      error: 'Erreur serveur lors de l\'ajout de l\'avis',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// SUPPRIMER UN AVIS - Avec gestion des anciens avis
+// 🗑️ SUPPRIMER UN AVIS
 router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res) => {
-  console.log('🗑️ Tentative de suppression d\'avis');
-  console.log('🔍 Product ID:', req.params.productId);
-  console.log('🔍 Review ID:', req.params.reviewId);
-  console.log('👤 Utilisateur authentifié:', req.user);
+  console.log('🗑️ === SUPPRESSION AVIS ===');
+  console.log('🆔 Product ID:', req.params.productId);
+  console.log('🆔 Review ID:', req.params.reviewId);
+  console.log('👤 Utilisateur:', req.user);
 
   try {
-    // Rechercher le produit
     const product = await Product.findById(req.params.productId);
     if (!product) {
       console.error('❌ Produit non trouvé');
@@ -313,7 +564,6 @@ router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res
       });
     }
 
-    // Rechercher l'avis
     const reviewIndex = product.reviews.findIndex(
       review => review._id.toString() === req.params.reviewId
     );
@@ -327,69 +577,52 @@ router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res
     }
 
     const review = product.reviews[reviewIndex];
-    console.log('🔍 Avis trouvé:', review);
-
-    // Récupérer les informations de l'utilisateur authentifié
-    const currentUserId = req.user.userId || req.user.id;
-    const currentUserFirstName = req.user.firstName;
-    const currentUserLastName = req.user.lastName;
-    const isAdmin = req.user.role === 'admin';
-
-    console.log('👤 Utilisateur current:', {
-      userId: currentUserId,
-      firstName: currentUserFirstName,
-      lastName: currentUserLastName,
-      role: req.user.role
+    console.log('🔍 Avis trouvé:', {
+      id: review._id,
+      author: review.user,
+      userId: review.userId
     });
 
-    // Vérifier les droits de suppression - LOGIQUE AMÉLIORÉE
+    // 🔐 VÉRIFICATION DROITS
+    const currentUserId = req.user.userId || req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
     let canDelete = false;
     let deleteReason = '';
 
-    // 1. Si l'utilisateur est admin, il peut tout supprimer
     if (isAdmin) {
       canDelete = true;
-      deleteReason = 'Admin rights';
-    }
-    // 2. Si l'avis a un userId (nouveaux avis), vérifier par ID
-    else if (review.userId) {
-      canDelete = review.userId === currentUserId;
-      deleteReason = 'Author by userId';
-    }
-    // 3. Pour les anciens avis (sans userId), vérifier par nom
-    else if (review.firstName && review.lastName && currentUserFirstName && currentUserLastName) {
-      const reviewFullName = `${review.firstName} ${review.lastName}`.toLowerCase().trim();
-      const userFullName = `${currentUserFirstName} ${currentUserLastName}`.toLowerCase().trim();
-      canDelete = reviewFullName === userFullName;
-      deleteReason = 'Author by name (legacy review)';
-    }
-    // 4. Dernière tentative avec le champ 'user' (nom complet)
-    else if (review.user && currentUserFirstName && currentUserLastName) {
-      const reviewName = review.user.toLowerCase().trim();
-      const userName = `${currentUserFirstName} ${currentUserLastName}`.toLowerCase().trim();
-      canDelete = reviewName === userName;
-      deleteReason = 'Author by full name (legacy review)';
+      deleteReason = 'Droits administrateur';
+    } else if (review.userId && review.userId === currentUserId) {
+      canDelete = true;
+      deleteReason = 'Auteur de l\'avis (par ID)';
+    } else if (req.user.firstName && req.user.lastName) {
+      const currentUserName = `${req.user.firstName} ${req.user.lastName}`.toLowerCase().trim();
+      const reviewAuthorName = review.user?.toLowerCase().trim();
+      
+      if (currentUserName === reviewAuthorName) {
+        canDelete = true;
+        deleteReason = 'Auteur de l\'avis (par nom)';
+      }
     }
 
-    console.log('🔐 Vérification des droits détaillée:', {
-      currentUserId,
-      reviewUserId: review.userId || 'undefined',
-      currentUserFullName: `${currentUserFirstName} ${currentUserLastName}`,
-      reviewAuthor: review.user || `${review.firstName} ${review.lastName}`,
-      isAdmin,
+    console.log('🔐 Vérification droits:', {
       canDelete,
-      deleteReason
+      deleteReason,
+      isAdmin,
+      currentUserId,
+      reviewUserId: review.userId
     });
 
     if (!canDelete) {
-      console.error('❌ Droits insuffisants pour la suppression');
+      console.error('❌ Droits insuffisants');
       return res.status(403).json({
         result: false,
         error: 'Vous n\'avez pas les droits pour supprimer cet avis'
       });
     }
 
-    // Supprimer l'avis
+    // 🗑️ SUPPRESSION
     product.reviews.splice(reviewIndex, 1);
     await product.save();
 
@@ -402,28 +635,19 @@ router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res
     });
 
   } catch (error) {
-    console.error('❌ Erreur lors de la suppression de l\'avis:', error);
+    console.error('❌ Erreur suppression avis:', error);
     res.status(500).json({
       result: false,
-      error: 'Erreur serveur lors de la suppression de l\'avis'
+      error: 'Erreur serveur lors de la suppression de l\'avis',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// ROUTE DE TEST TEMPORAIRE - À supprimer après debug
-router.get('/test-auth', authenticateToken, (req, res) => {
-  console.log('🧪 ROUTE DE TEST - Utilisateur authentifié:', req.user);
-  res.json({
-    result: true,
-    message: 'Authentification fonctionne !',
-    user: req.user,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// RÉCUPÉRER TOUS LES AVIS D'UN PRODUIT (optionnel)
+// 📋 RÉCUPÉRER AVIS D'UN PRODUIT
 router.get('/:id/reviews', async (req, res) => {
-  console.log('📋 Récupération des avis du produit:', req.params.id);
+  console.log('📋 === RÉCUPÉRATION AVIS PRODUIT ===');
+  console.log('🆔 Product ID:', req.params.id);
 
   try {
     const product = await Product.findById(req.params.id);
@@ -435,21 +659,104 @@ router.get('/:id/reviews', async (req, res) => {
       });
     }
 
-    console.log('✅ Avis récupérés:', product.reviews?.length || 0, 'avis');
+    const reviews = product.reviews || [];
+    console.log('✅ Avis récupérés:', reviews.length, 'avis');
+
+    // 📊 STATISTIQUES AVIS
+    const stats = {
+      total: reviews.length,
+      averageRating: reviews.length > 0 
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+        : 0,
+      ratingDistribution: {
+        5: reviews.filter(r => r.rating === 5).length,
+        4: reviews.filter(r => r.rating === 4).length,
+        3: reviews.filter(r => r.rating === 3).length,
+        2: reviews.filter(r => r.rating === 2).length,
+        1: reviews.filter(r => r.rating === 1).length,
+      }
+    };
+
+    console.log('📊 Stats avis:', stats);
 
     res.json({
       result: true,
-      reviews: product.reviews || [],
-      totalReviews: product.reviews?.length || 0
+      reviews: reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), // Plus récents en premier
+      stats: stats,
+      productTitle: product.title
     });
 
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération des avis:', error);
+    console.error('❌ Erreur récupération avis:', error);
     res.status(500).json({
       result: false,
-      error: 'Erreur serveur lors de la récupération des avis'
+      error: 'Erreur serveur lors de la récupération des avis',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
+});
+
+// 🧪 ROUTE DE TEST AUTHENTIFICATION
+router.get('/test-auth', authenticateToken, (req, res) => {
+  console.log('🧪 === TEST AUTHENTIFICATION ===');
+  console.log('👤 Utilisateur authentifié:', req.user);
+  
+  res.json({
+    result: true,
+    message: '🎉 Authentification fonctionne parfaitement !',
+    user: req.user,
+    timestamp: new Date().toISOString(),
+    cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+  });
+});
+
+// 📊 ROUTE DE STATISTIQUES (BONUS)
+router.get('/admin/stats', authenticateToken, async (req, res) => {
+  console.log('📊 === STATISTIQUES ADMIN ===');
+  
+  try {
+    // Vérifier que c'est un admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        result: false,
+        error: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const products = await Product.find();
+    
+    const stats = {
+      totalProducts: products.length,
+      totalReviews: products.reduce((sum, p) => sum + (p.reviews?.length || 0), 0),
+      averagePrice: products.length > 0 
+        ? (products.reduce((sum, p) => sum + p.price, 0) / products.length).toFixed(2)
+        : 0,
+      outOfStock: products.filter(p => p.stock === 0).length,
+      withImages: products.filter(p => p.images && p.images.length > 0).length,
+      totalImages: products.reduce((sum, p) => sum + (p.images?.length || 0), 0)
+    };
+
+    console.log('📊 Statistiques calculées:', stats);
+
+    res.json({
+      result: true,
+      stats: stats
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur calcul statistiques:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur lors du calcul des statistiques'
+    });
+  }
+});
+
+console.log('✅ === MODULE ROUTES PRODUITS CHARGÉ ===');
+console.log('🔧 Configuration:', {
+  environment: process.env.NODE_ENV || 'development',
+  cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME,
+  debugMode: process.env.DEBUG_CLOUDINARY === 'true'
 });
 
 module.exports = router;
