@@ -9,26 +9,26 @@ const OrderSchema = new mongoose.Schema({
     image: { type: String }
   }],
   totalAmount: { type: Number, required: true },
-  total: { type: Number }, // Compatibilité avec le frontend
+  total: { type: Number },
   status: { 
     type: String, 
-    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'], // Étapes de traitement de la commande
+    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
   payment: { 
     type: String, 
-    enum: ['completed', 'failed'], // Statuts de paiement
-    default: 'failed' // Par défaut, le paiement est considéré comme échoué
+    enum: ['completed', 'failed'], 
+    default: 'failed' 
   },
-  statusLabel: { type: String }, // Labels en français pour le frontend
+  statusLabel: { type: String },
   sessionId: { type: String, required: true },
   shippingMethod: { type: String },
   shippingCost: { type: Number, default: 0 },
-  shipping: { type: Number }, // Compatibilité avec le frontend
-  paymentMethod: { type: String, default: 'Carte bancaire' }, // Méthode de paiement
-  trackingNumber: { type: String }, // Suivi des colis
-  cancellationReason: { type: String }, // Raison d'annulation
-  shippingAddress: { // Adresse de livraison structurée
+  shipping: { type: Number },
+  paymentMethod: { type: String, default: 'Carte bancaire' },
+  trackingNumber: { type: String }, 
+  cancellationReason: { type: String },
+  shippingAddress: { 
     street: { type: String },
     postalCode: { type: String },
     city: { type: String },
