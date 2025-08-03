@@ -115,7 +115,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// 🧪 TEST: Enregistrer SEULEMENT les routes users et products
+// 🧪 TEST: Enregistrer SEULEMENT users (commentez products temporairement)
 console.log('📍 Enregistrement des routes de test...');
 
 try {
@@ -127,6 +127,8 @@ try {
   throw error;
 }
 
+// 🚫 PRODUCTS COMMENTÉ TEMPORAIREMENT POUR TEST
+/*
 try {
   console.log('  - Registering products routes...');
   app.use('/products', productsRouter);
@@ -135,8 +137,9 @@ try {
   console.error('  ❌ Error with products routes:', error.message);
   throw error;
 }
+*/
 
-console.log('✅ Routes de test enregistrées');
+console.log('✅ Route de test enregistrée (SEULEMENT users)');
 
 // ✅ 404 handler
 app.use('*', (req, res) => {
