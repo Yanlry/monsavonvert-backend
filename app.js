@@ -51,14 +51,40 @@ mongoose.connect(mongoURI, {
   }
 });
 
-// Import des routes
-const usersRouter = require('./routes/users');
-const productsRouter = require('./routes/products');
-const customersRouter = require('./routes/customers');
-const stripeRoutes = require('./routes/stripe-webhook');
-const stripeCheckoutRoutes = require('./routes/create-checkout');
-const confirmOrderRouter = require('./routes/confirm-order');  
-const ordersRouter = require('./routes/orders');
+// 🔍 DIAGNOSTIC: Import des routes un par un avec try/catch
+let usersRouter, productsRouter, customersRouter, stripeRoutes, stripeCheckoutRoutes, confirmOrderRouter, ordersRouter;
+
+try {
+  console.log('📁 Import des modules de routes...');
+  
+  console.log('  - Importing users...');
+  usersRouter = require('./routes/users');
+  
+  console.log('  - Importing products...');
+  productsRouter = require('./routes/products');
+  
+  console.log('  - Importing customers...');
+  customersRouter = require('./routes/customers');
+  
+  console.log('  - Importing stripe-webhook...');
+  stripeRoutes = require('./routes/stripe-webhook');
+  
+  console.log('  - Importing create-checkout...');
+  stripeCheckoutRoutes = require('./routes/create-checkout');
+  
+  console.log('  - Importing confirm-order...');
+  confirmOrderRouter = require('./routes/confirm-order');
+  
+  console.log('  - Importing orders...');
+  ordersRouter = require('./routes/orders');
+  
+  console.log('✅ Tous les modules importés avec succès');
+  
+} catch (importError) {
+  console.error('❌ ERREUR lors de l\'import des routes:', importError.message);
+  console.error('Stack:', importError.stack);
+  throw importError;
+}
 
 const app = express();
 
@@ -92,7 +118,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ Route de santé pour monitoring
+// ✅ Route de santé pour monitoring (AVANT les autres routes)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK',
@@ -104,50 +130,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ✅ Middleware de logging pour debug
-app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.path} - ${new Date().toISOString()}`);
-  next();
-});
-
-// ✅ Routes principales avec diagnostic d'erreurs
-try {
-  console.log('📍 Chargement des routes...');
-  
-  console.log('  - Users routes...');
-  app.use('/users', usersRouter);
-  
-  console.log('  - Products routes...');
-  app.use('/products', productsRouter);
-  
-  console.log('  - Customers routes...');
-  app.use('/customers', customersRouter);
-  
-  console.log('  - Stripe webhook routes...');
-  app.use('/stripe', stripeRoutes);
-  
-  console.log('  - Stripe checkout routes...');
-  app.use('/api', stripeCheckoutRoutes);
-  
-  console.log('  - Confirm order routes...');
-  app.use('/api', confirmOrderRouter);
-  
-  console.log('  - Orders routes...');
-  app.use('/orders', ordersRouter);
-  
-  console.log('✅ Toutes les routes chargées avec succès');
-  
-} catch (routeError) {
-  console.error('❌ ERREUR lors du chargement des routes:', routeError.message);
-  console.error('Stack:', routeError.stack);
-  throw routeError;
-}
-
-// ✅ Route racine pour vérification
+// ✅ Route racine simple pour test (AVANT les autres routes)
 app.get('/', (req, res) => {
+  console.log('📍 Accès à la route racine /');
   res.json({
     message: 'API MonSavonVert - Backend opérationnel',
     version: '1.0.0',
+    status: 'OK',
+    timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
       products: '/products',
@@ -157,12 +147,107 @@ app.get('/', (req, res) => {
   });
 });
 
+// ✅ Middleware de logging pour debug
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
+});
+
+// 🔍 DIAGNOSTIC: Routes avec try/catch individuels pour identifier le problème
+console.log('📍 Enregistrement des routes...');
+
+// Testez une route à la fois - décommentez-les progressivement :
+
+// Route 1: Users
+try {
+  console.log('  - Registering users routes...');
+  app.use('/users', usersRouter);
+  console.log('  ✅ Users routes registered');
+} catch (error) {
+  console.error('  ❌ Error with users routes:', error.message);
+  throw error;
+}
+
+// Route 2: Products (commentez temporairement si erreur)
+try {
+  console.log('  - Registering products routes...');
+  app.use('/products', productsRouter);
+  console.log('  ✅ Products routes registered');
+} catch (error) {
+  console.error('  ❌ Error with products routes:', error.message);
+  throw error;
+}
+
+// Route 3: Customers (commentez temporairement si erreur)
+try {
+  console.log('  - Registering customers routes...');
+  app.use('/customers', customersRouter);
+  console.log('  ✅ Customers routes registered');
+} catch (error) {
+  console.error('  ❌ Error with customers routes:', error.message);
+  throw error;
+}
+
+// Route 4: Stripe webhook (commentez temporairement si erreur)
+try {
+  console.log('  - Registering stripe webhook routes...');
+  app.use('/stripe', stripeRoutes);
+  console.log('  ✅ Stripe webhook routes registered');
+} catch (error) {
+  console.error('  ❌ Error with stripe webhook routes:', error.message);
+  throw error;
+}
+
+// Route 5: Stripe checkout (commentez temporairement si erreur)
+try {
+  console.log('  - Registering stripe checkout routes...');
+  app.use('/api', stripeCheckoutRoutes);
+  console.log('  ✅ Stripe checkout routes registered');
+} catch (error) {
+  console.error('  ❌ Error with stripe checkout routes:', error.message);
+  throw error;
+}
+
+// Route 6: Confirm order (commentez temporairement si erreur)
+try {
+  console.log('  - Registering confirm order routes...');
+  app.use('/api', confirmOrderRouter);
+  console.log('  ✅ Confirm order routes registered');
+} catch (error) {
+  console.error('  ❌ Error with confirm order routes:', error.message);
+  throw error;
+}
+
+// Route 7: Orders (commentez temporairement si erreur)
+try {
+  console.log('  - Registering orders routes...');
+  app.use('/orders', ordersRouter);
+  console.log('  ✅ Orders routes registered');
+} catch (error) {
+  console.error('  ❌ Error with orders routes:', error.message);
+  throw error;
+}
+
+console.log('✅ Toutes les routes enregistrées avec succès');
+
 // ✅ Gestion des erreurs 404
 app.use('*', (req, res) => {
+  console.log(`❓ Route non trouvée: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: 'Route non trouvée',
     path: req.originalUrl,
     method: req.method
+  });
+});
+
+// ✅ Gestion globale des erreurs
+app.use((error, req, res, next) => {
+  console.error('💥 ERREUR GLOBALE:', error.message);
+  console.error('Stack:', error.stack);
+  
+  res.status(500).json({
+    error: 'Erreur serveur interne',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Erreur interne'
   });
 });
 
