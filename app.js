@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
 
-// ✅ STANDARDISATION: Utiliser MONGODB_URI partout (standard de l'industrie)
+// ✅ STANDARDISATION: Utiliser MONGODB_URI partout
 const mongoURI = process.env.MONGODB_URI || process.env.CONNECTION_STRING;
 
 // ✅ Vérification des variables d'environnement critiques
@@ -23,15 +23,14 @@ if (process.env.VERCEL) {
 
 if (!mongoURI) {
   console.error('❌ ERREUR CRITIQUE: Aucune URI MongoDB trouvée');
-  console.error('📝 Assurez-vous d\'avoir MONGODB_URI dans vos variables d\'environnement');
   process.exit(1);
 }
 
-// ✅ Connexion MongoDB avec configuration optimisée pour Vercel (sans warnings deprecated)
+// ✅ Connexion MongoDB
 mongoose.connect(mongoURI, {
-  serverSelectionTimeoutMS: 30000, // 30 secondes pour Vercel
-  socketTimeoutMS: 75000,          // 75 secondes pour les requêtes longues
-  maxPoolSize: 10,                 // Pool de connexions
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 75000,
+  maxPoolSize: 10,
   retryWrites: true,
   retryReads: true,
 })
@@ -41,18 +40,10 @@ mongoose.connect(mongoURI, {
 })
 .catch(err => {
   console.error('❌ Erreur MongoDB:', err.message);
-  
-  // Messages d'aide pour le débogage
-  if (err.message.includes('buffering timed out')) {
-    console.error('💡 Timeout MongoDB - Vérifiez:');
-    console.error('   1. IP Whitelist sur MongoDB Atlas');
-    console.error('   2. Variables d\'environnement sur Vercel');
-    console.error('   3. Format de l\'URI MongoDB');
-  }
 });
 
-// 🔍 DIAGNOSTIC: Import des routes un par un avec try/catch
-let usersRouter, productsRouter, customersRouter, stripeRoutes, stripeCheckoutRoutes, confirmOrderRouter, ordersRouter;
+// 🔍 DIAGNOSTIC: Import des routes un par un
+let usersRouter, productsRouter;
 
 try {
   console.log('📁 Import des modules de routes...');
@@ -63,22 +54,7 @@ try {
   console.log('  - Importing products...');
   productsRouter = require('./routes/products');
   
-  console.log('  - Importing customers...');
-  customersRouter = require('./routes/customers');
-  
-  console.log('  - Importing stripe-webhook...');
-  stripeRoutes = require('./routes/stripe-webhook');
-  
-  console.log('  - Importing create-checkout...');
-  stripeCheckoutRoutes = require('./routes/create-checkout');
-  
-  console.log('  - Importing confirm-order...');
-  confirmOrderRouter = require('./routes/confirm-order');
-  
-  console.log('  - Importing orders...');
-  ordersRouter = require('./routes/orders');
-  
-  console.log('✅ Tous les modules importés avec succès');
+  console.log('✅ Modules de base importés avec succès');
   
 } catch (importError) {
   console.error('❌ ERREUR lors de l\'import des routes:', importError.message);
@@ -88,12 +64,12 @@ try {
 
 const app = express();
 
-// ✅ Configuration CORS améliorée
+// ✅ Configuration CORS
 const corsOptions = {
   origin: [
-    'http://localhost:3001',                        // Frontend local
-    'https://monsavonvert-frontend.vercel.app',     // Frontend production
-    'http://localhost:8888',                        // Backend local (pour tests)
+    'http://localhost:3001',
+    'https://monsavonvert-frontend.vercel.app',
+    'http://localhost:8888',
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -105,7 +81,7 @@ const corsOptions = {
     'Accept',
     'Origin'
   ],
-  optionsSuccessStatus: 200 // Pour les navigateurs legacy
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
@@ -118,47 +94,30 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// ✅ Route de santé pour monitoring (AVANT les autres routes)
+// ✅ Route de santé SIMPLE
 app.get('/health', (req, res) => {
+  console.log('📍 Route /health appelée');
   res.json({ 
     status: 'OK',
-    message: 'Backend MonSavonVert is running!', 
+    message: 'Backend test fonctionnel', 
     timestamp: new Date().toISOString(),
-    port: process.env.PORT || 8888,
-    environment: process.env.NODE_ENV || 'development',
     mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
-// ✅ Route racine simple pour test (AVANT les autres routes)
+// ✅ Route racine SIMPLE
 app.get('/', (req, res) => {
-  console.log('📍 Accès à la route racine /');
+  console.log('📍 Route / appelée');
   res.json({
-    message: 'API MonSavonVert - Backend opérationnel',
-    version: '1.0.0',
+    message: 'API MonSavonVert - Test minimal',
     status: 'OK',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      products: '/products',
-      users: '/users',
-      orders: '/orders'
-    }
+    timestamp: new Date().toISOString()
   });
 });
 
-// ✅ Middleware de logging pour debug
-app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.path} - ${new Date().toISOString()}`);
-  next();
-});
+// 🧪 TEST: Enregistrer SEULEMENT les routes users et products
+console.log('📍 Enregistrement des routes de test...');
 
-// 🔍 DIAGNOSTIC: Routes avec try/catch individuels pour identifier le problème
-console.log('📍 Enregistrement des routes...');
-
-// Testez une route à la fois - décommentez-les progressivement :
-
-// Route 1: Users
 try {
   console.log('  - Registering users routes...');
   app.use('/users', usersRouter);
@@ -168,7 +127,6 @@ try {
   throw error;
 }
 
-// Route 2: Products (commentez temporairement si erreur)
 try {
   console.log('  - Registering products routes...');
   app.use('/products', productsRouter);
@@ -178,76 +136,28 @@ try {
   throw error;
 }
 
-// Route 3: Customers (commentez temporairement si erreur)
-try {
-  console.log('  - Registering customers routes...');
-  app.use('/customers', customersRouter);
-  console.log('  ✅ Customers routes registered');
-} catch (error) {
-  console.error('  ❌ Error with customers routes:', error.message);
-  throw error;
-}
+console.log('✅ Routes de test enregistrées');
 
-// Route 4: Stripe webhook (commentez temporairement si erreur)
-try {
-  console.log('  - Registering stripe webhook routes...');
-  app.use('/stripe', stripeRoutes);
-  console.log('  ✅ Stripe webhook routes registered');
-} catch (error) {
-  console.error('  ❌ Error with stripe webhook routes:', error.message);
-  throw error;
-}
-
-// Route 5: Stripe checkout (commentez temporairement si erreur)
-try {
-  console.log('  - Registering stripe checkout routes...');
-  app.use('/api', stripeCheckoutRoutes);
-  console.log('  ✅ Stripe checkout routes registered');
-} catch (error) {
-  console.error('  ❌ Error with stripe checkout routes:', error.message);
-  throw error;
-}
-
-// Route 6: Confirm order (commentez temporairement si erreur)
-try {
-  console.log('  - Registering confirm order routes...');
-  app.use('/api', confirmOrderRouter);
-  console.log('  ✅ Confirm order routes registered');
-} catch (error) {
-  console.error('  ❌ Error with confirm order routes:', error.message);
-  throw error;
-}
-
-// Route 7: Orders (commentez temporairement si erreur)
-try {
-  console.log('  - Registering orders routes...');
-  app.use('/orders', ordersRouter);
-  console.log('  ✅ Orders routes registered');
-} catch (error) {
-  console.error('  ❌ Error with orders routes:', error.message);
-  throw error;
-}
-
-console.log('✅ Toutes les routes enregistrées avec succès');
-
-// ✅ Gestion des erreurs 404
+// ✅ 404 handler
 app.use('*', (req, res) => {
   console.log(`❓ Route non trouvée: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     error: 'Route non trouvée',
     path: req.originalUrl,
-    method: req.method
+    method: req.method,
+    availableRoutes: ['/health', '/', '/users', '/products']
   });
 });
 
-// ✅ Gestion globale des erreurs
+// ✅ Error handler
 app.use((error, req, res, next) => {
   console.error('💥 ERREUR GLOBALE:', error.message);
   console.error('Stack:', error.stack);
   
   res.status(500).json({
     error: 'Erreur serveur interne',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Erreur interne'
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Erreur interne',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -265,6 +175,7 @@ app.listen(PORT, () => {
   
   console.log(`🔗 Backend URL: ${backendUrl}`);
   console.log(`📊 MongoDB Status: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '⏳ Connecting...'}`);
+  console.log(`🧪 TEST: Seules les routes /users et /products sont actives`);
 });
 
 // ✅ Gestion propre des arrêts
