@@ -42,22 +42,22 @@ mongoose.connect(mongoURI, {
   console.error('❌ Erreur MongoDB:', err.message);
 });
 
-// 🔍 DIAGNOSTIC: Import des routes un par un
-let usersRouter, productsRouter;
+// 🔍 DIAGNOSTIC: Import SEULEMENT users (PAS products)
+let usersRouter;
 
 try {
-  console.log('📁 Import des modules de routes...');
+  console.log('📁 Import du module users...');
   
   console.log('  - Importing users...');
   usersRouter = require('./routes/users');
   
-  console.log('  - Importing products...');
-  productsRouter = require('./routes/products');
+  // 🚫 NE PAS IMPORTER products.js DU TOUT
+  console.log('  - Skipping products import for test...');
   
-  console.log('✅ Modules de base importés avec succès');
+  console.log('✅ Module users importé avec succès');
   
 } catch (importError) {
-  console.error('❌ ERREUR lors de l\'import des routes:', importError.message);
+  console.error('❌ ERREUR lors de l\'import:', importError.message);
   console.error('Stack:', importError.stack);
   throw importError;
 }
