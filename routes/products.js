@@ -133,104 +133,7 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// ✅ ===== ROUTES DANS LE BON ORDRE =====
-// IMPORTANT: Les routes spécifiques DOIVENT être définies AVANT les routes génériques avec paramètres
-
-// 📋 RÉCUPÉRER TOUS LES PRODUITS
-router.get('/', async (req, res) => {
-  console.log('📋 === RÉCUPÉRATION DE TOUS LES PRODUITS ===');
-  
-  try {
-    const startTime = Date.now();
-    const products = await Product.find().sort({ createdAt: -1 }); // Plus récents en premier
-    const endTime = Date.now();
-    
-    console.log('✅ Produits récupérés:', products.length, 'produit(s)');
-    console.log('⏱️ Temps de requête:', endTime - startTime, 'ms');
-    
-    // 📊 STATISTIQUES
-    const stats = {
-      total: products.length,
-      withImages: products.filter(p => p.images && p.images.length > 0).length,
-      inStock: products.filter(p => p.stock > 0).length,
-      outOfStock: products.filter(p => p.stock === 0).length
-    };
-    
-    console.log('📊 Statistiques:', stats);
-    
-    res.status(200).json({ 
-      result: true, 
-      products,
-      stats: stats
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur lors de la récupération des produits:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la récupération des produits',
-      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// 🧪 ROUTE DE TEST AUTHENTIFICATION (AVANT /:id)
-router.get('/test-auth', authenticateToken, (req, res) => {
-  console.log('🧪 === TEST AUTHENTIFICATION ===');
-  console.log('👤 Utilisateur authentifié:', req.user);
-  
-  res.json({
-    result: true,
-    message: '🎉 Authentification fonctionne parfaitement !',
-    user: req.user,
-    timestamp: new Date().toISOString(),
-    cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
-  });
-});
-
-// 📊 ROUTE DE STATISTIQUES ADMIN (AVANT /:id)
-router.get('/admin/stats', authenticateToken, async (req, res) => {
-  console.log('📊 === STATISTIQUES ADMIN ===');
-  
-  try {
-    // Vérifier que c'est un admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({
-        result: false,
-        error: 'Accès réservé aux administrateurs'
-      });
-    }
-
-    const products = await Product.find();
-    
-    const stats = {
-      totalProducts: products.length,
-      totalReviews: products.reduce((sum, p) => sum + (p.reviews?.length || 0), 0),
-      averagePrice: products.length > 0 
-        ? (products.reduce((sum, p) => sum + p.price, 0) / products.length).toFixed(2)
-        : 0,
-      outOfStock: products.filter(p => p.stock === 0).length,
-      withImages: products.filter(p => p.images && p.images.length > 0).length,
-      totalImages: products.reduce((sum, p) => sum + (p.images?.length || 0), 0)
-    };
-
-    console.log('📊 Statistiques calculées:', stats);
-
-    res.json({
-      result: true,
-      stats: stats
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur calcul statistiques:', error);
-    res.status(500).json({
-      result: false,
-      error: 'Erreur lors du calcul des statistiques'
-    });
-  }
-});
-
-// 📤 AJOUTER UN PRODUIT (AVANT /:id)
+// 📤 AJOUTER UN PRODUIT
 router.post('/add', upload.array('images', 5), async (req, res) => {
   console.log('📤 === AJOUT D\'UN NOUVEAU PRODUIT ===');
   console.log('📋 Données reçues:', req.body);
@@ -316,7 +219,45 @@ router.post('/add', upload.array('images', 5), async (req, res) => {
   }
 });
 
-// 🔍 RÉCUPÉRER UN PRODUIT PAR ID (MAINTENANT APRÈS LES ROUTES SPÉCIFIQUES)
+// 📋 RÉCUPÉRER TOUS LES PRODUITS
+router.get('/', async (req, res) => {
+  console.log('📋 === RÉCUPÉRATION DE TOUS LES PRODUITS ===');
+  
+  try {
+    const startTime = Date.now();
+    const products = await Product.find().sort({ createdAt: -1 }); // Plus récents en premier
+    const endTime = Date.now();
+    
+    console.log('✅ Produits récupérés:', products.length, 'produit(s)');
+    console.log('⏱️ Temps de requête:', endTime - startTime, 'ms');
+    
+    // 📊 STATISTIQUES
+    const stats = {
+      total: products.length,
+      withImages: products.filter(p => p.images && p.images.length > 0).length,
+      inStock: products.filter(p => p.stock > 0).length,
+      outOfStock: products.filter(p => p.stock === 0).length
+    };
+    
+    console.log('📊 Statistiques:', stats);
+    
+    res.status(200).json({ 
+      result: true, 
+      products,
+      stats: stats
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des produits:', error);
+    res.status(500).json({ 
+      result: false, 
+      error: 'Erreur lors de la récupération des produits',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 🔍 RÉCUPÉRER UN PRODUIT PAR ID
 router.get('/:id', async (req, res) => {
   console.log('🔍 === RÉCUPÉRATION PRODUIT PAR ID ===');
   console.log('🆔 ID recherché:', req.params.id);
@@ -350,58 +291,6 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ 
       result: false, 
       error: 'Erreur lors de la récupération du produit',
-      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// 📋 RÉCUPÉRER AVIS D'UN PRODUIT (APRÈS /:id mais avec pattern spécifique)
-router.get('/:id/reviews', async (req, res) => {
-  console.log('📋 === RÉCUPÉRATION AVIS PRODUIT ===');
-  console.log('🆔 Product ID:', req.params.id);
-
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      console.error('❌ Produit non trouvé');
-      return res.status(404).json({
-        result: false,
-        error: 'Produit non trouvé'
-      });
-    }
-
-    const reviews = product.reviews || [];
-    console.log('✅ Avis récupérés:', reviews.length, 'avis');
-
-    // 📊 STATISTIQUES AVIS
-    const stats = {
-      total: reviews.length,
-      averageRating: reviews.length > 0 
-        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-        : 0,
-      ratingDistribution: {
-        5: reviews.filter(r => r.rating === 5).length,
-        4: reviews.filter(r => r.rating === 4).length,
-        3: reviews.filter(r => r.rating === 3).length,
-        2: reviews.filter(r => r.rating === 2).length,
-        1: reviews.filter(r => r.rating === 1).length,
-      }
-    };
-
-    console.log('📊 Stats avis:', stats);
-
-    res.json({
-      result: true,
-      reviews: reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), // Plus récents en premier
-      stats: stats,
-      productTitle: product.title
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur récupération avis:', error);
-    res.status(500).json({
-      result: false,
-      error: 'Erreur serveur lors de la récupération des avis',
       debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -751,6 +640,114 @@ router.delete('/:productId/review/:reviewId', authenticateToken, async (req, res
       result: false,
       error: 'Erreur serveur lors de la suppression de l\'avis',
       debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 📋 RÉCUPÉRER AVIS D'UN PRODUIT
+router.get('/:id/reviews', async (req, res) => {
+  console.log('📋 === RÉCUPÉRATION AVIS PRODUIT ===');
+  console.log('🆔 Product ID:', req.params.id);
+
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      console.error('❌ Produit non trouvé');
+      return res.status(404).json({
+        result: false,
+        error: 'Produit non trouvé'
+      });
+    }
+
+    const reviews = product.reviews || [];
+    console.log('✅ Avis récupérés:', reviews.length, 'avis');
+
+    // 📊 STATISTIQUES AVIS
+    const stats = {
+      total: reviews.length,
+      averageRating: reviews.length > 0 
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+        : 0,
+      ratingDistribution: {
+        5: reviews.filter(r => r.rating === 5).length,
+        4: reviews.filter(r => r.rating === 4).length,
+        3: reviews.filter(r => r.rating === 3).length,
+        2: reviews.filter(r => r.rating === 2).length,
+        1: reviews.filter(r => r.rating === 1).length,
+      }
+    };
+
+    console.log('📊 Stats avis:', stats);
+
+    res.json({
+      result: true,
+      reviews: reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), // Plus récents en premier
+      stats: stats,
+      productTitle: product.title
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération avis:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur serveur lors de la récupération des avis',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 🧪 ROUTE DE TEST AUTHENTIFICATION
+router.get('/test-auth', authenticateToken, (req, res) => {
+  console.log('🧪 === TEST AUTHENTIFICATION ===');
+  console.log('👤 Utilisateur authentifié:', req.user);
+  
+  res.json({
+    result: true,
+    message: '🎉 Authentification fonctionne parfaitement !',
+    user: req.user,
+    timestamp: new Date().toISOString(),
+    cloudinaryConfigured: !!process.env.CLOUDINARY_CLOUD_NAME
+  });
+});
+
+// 📊 ROUTE DE STATISTIQUES (BONUS)
+router.get('/admin/stats', authenticateToken, async (req, res) => {
+  console.log('📊 === STATISTIQUES ADMIN ===');
+  
+  try {
+    // Vérifier que c'est un admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        result: false,
+        error: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const products = await Product.find();
+    
+    const stats = {
+      totalProducts: products.length,
+      totalReviews: products.reduce((sum, p) => sum + (p.reviews?.length || 0), 0),
+      averagePrice: products.length > 0 
+        ? (products.reduce((sum, p) => sum + p.price, 0) / products.length).toFixed(2)
+        : 0,
+      outOfStock: products.filter(p => p.stock === 0).length,
+      withImages: products.filter(p => p.images && p.images.length > 0).length,
+      totalImages: products.reduce((sum, p) => sum + (p.images?.length || 0), 0)
+    };
+
+    console.log('📊 Statistiques calculées:', stats);
+
+    res.json({
+      result: true,
+      stats: stats
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur calcul statistiques:', error);
+    res.status(500).json({
+      result: false,
+      error: 'Erreur lors du calcul des statistiques'
     });
   }
 });

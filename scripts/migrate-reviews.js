@@ -1,261 +1,165 @@
-// ================================
 // scripts/migrate-reviews.js
 // Script pour migrer les anciens avis et ajouter les champs manquants
-// ================================
 
 const mongoose = require('mongoose');
-const Product = require('../models/product');
-require('dotenv').config();
+const Product = require('../models/product'); // Ajustez le chemin selon votre structure
+require('dotenv').config(); // Charger les variables d'environnement
 
-// ✅ STANDARDISATION: Même logique que app.js
-const mongoURI = process.env.MONGODB_URI || process.env.CONNECTION_STRING;
+// Configuration de la base de données - utiliser la même URI que votre app
+const MONGODB_URI = process.env.MONGODB_URI || process.env.DATABASE_URL || 'mongodb://localhost:27017/votre-db';
 
-console.log('🔍 Configuration de migration:');
-console.log('URI MongoDB:', mongoURI ? mongoURI.replace(/\/\/.*:.*@/, '//***:***@') : 'AUCUNE URI');
-console.log('Environnement:', process.env.NODE_ENV || 'development');
+console.log('🔍 URI MongoDB utilisée:', MONGODB_URI ? MONGODB_URI.replace(/\/\/.*:.*@/, '//***:***@') : 'AUCUNE URI');
 
-/**
- * Fonction principale de migration des avis
- */
 async function migrateReviews() {
   try {
-    console.log('🚀 Début de la migration des avis...\n');
+    console.log('🚀 Début de la migration des avis...');
     
-    // ✅ Vérification de l'URI MongoDB
-    if (!mongoURI) {
-      console.error('❌ ERREUR CRITIQUE: Aucune URI MongoDB trouvée');
-      console.error('📝 Vérifiez que MONGODB_URI est définie dans votre .env');
-      console.error('💡 Variables disponibles:');
-      console.error('   - MONGODB_URI:', process.env.MONGODB_URI ? 'Définie' : 'Manquante');
-      console.error('   - CONNECTION_STRING:', process.env.CONNECTION_STRING ? 'Définie' : 'Manquante');
-      throw new Error('Variables MongoDB manquantes');
+    // Vérifier que l'URI est définie
+    if (!MONGODB_URI || MONGODB_URI.includes('localhost')) {
+      console.error('❌ ATTENTION: Utilisation de MongoDB local ou URI manquante');
+      console.log('💡 Assurez-vous que MONGODB_URI est définie dans votre .env');
+      console.log('💡 Variable trouvée:', process.env.MONGODB_URI ? 'OUI' : 'NON');
     }
     
-    // ✅ Connexion MongoDB avec même config que app.js
-    console.log('🔌 Connexion à MongoDB...');
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 75000,
-    });
-    console.log('✅ Connecté à la base de données MongoDB\n');
+    // Se connecter à MongoDB
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ Connecté à la base de données MongoDB');
 
-    // ✅ Recherche des produits avec avis
-    console.log('🔍 Recherche des produits avec des avis...');
-    const products = await Product.find({ 
-      'reviews.0': { $exists: true } 
-    });
-    
-    console.log(`📦 ${products.length} produit(s) trouvé(s) avec des avis\n`);
+    // Trouver tous les produits avec des avis
+    const products = await Product.find({ 'reviews.0': { $exists: true } });
+    console.log(`📦 ${products.length} produits trouvés avec des avis`);
 
     if (products.length === 0) {
       console.log('ℹ️ Aucun produit avec des avis trouvé. Migration terminée.');
-      return { migrated: 0, alreadyMigrated: 0, products: 0 };
+      return;
     }
 
-    // ✅ Compteurs pour le rapport
     let totalMigrated = 0;
     let totalAlreadyMigrated = 0;
-    let totalErrors = 0;
 
-    // ✅ Migration produit par produit
-    for (const [index, product] of products.entries()) {
-      console.log(`📦 [${index + 1}/${products.length}] Migration du produit: "${product.title}"`);
-      console.log(`   Avis à traiter: ${product.reviews.length}`);
+    for (const product of products) {
+      console.log(`\n📦 Migration du produit: ${product.title}`);
       
       let productModified = false;
       
       for (let i = 0; i < product.reviews.length; i++) {
         const review = product.reviews[i];
         
-        try {
-          // ✅ Vérifier si l'avis a déjà un userId
-          if (review.userId) {
-            totalAlreadyMigrated++;
-            console.log(`   ✅ Avis ${i + 1} déjà migré (userId: ${review.userId})`);
-            continue;
-          }
-
-          // ✅ Extraire firstName et lastName
-          const { firstName, lastName } = extractNames(review);
-          
-          // ✅ Générer un userId temporaire
-          const tempUserId = generateTempUserId(firstName, lastName, review.user);
-
-          // ✅ Mettre à jour l'avis avec tous les champs requis
-          product.reviews[i] = {
-            ...review.toObject(),
-            userId: tempUserId,
-            firstName: firstName || 'Anonyme',
-            lastName: lastName || '',
-            user: review.user || `${firstName} ${lastName}`.trim(),
-            createdAt: review.createdAt || new Date(),
-            // Ajouter d'autres champs si nécessaire
-            verified: review.verified || false,
-            helpful: review.helpful || 0,
-          };
-
-          productModified = true;
-          totalMigrated++;
-          
-          console.log(`   🔄 Avis ${i + 1} migré:`, {
-            originalUser: review.user || 'Non défini',
-            newUserId: tempUserId,
-            firstName: firstName || 'Anonyme',
-            lastName: lastName || ''
-          });
-
-        } catch (reviewError) {
-          console.error(`   ❌ Erreur avis ${i + 1}:`, reviewError.message);
-          totalErrors++;
+        // Vérifier si l'avis a déjà un userId
+        if (review.userId) {
+          totalAlreadyMigrated++;
+          console.log(`  ✅ Avis ${i + 1} déjà migré (userId: ${review.userId})`);
+          continue;
         }
+
+        // Extraire firstName et lastName du champ 'user' si possible
+        let firstName = review.firstName;
+        let lastName = review.lastName;
+        
+        if (!firstName && !lastName && review.user) {
+          const nameParts = review.user.trim().split(' ');
+          firstName = nameParts[0] || '';
+          lastName = nameParts.slice(1).join(' ') || '';
+        }
+
+        // Générer un userId temporaire basé sur le nom
+        // ⚠️ ATTENTION: Cette méthode génère des IDs temporaires
+        // Dans un vrai système, vous devriez mapper les vrais IDs utilisateurs
+        const tempUserId = generateTempUserId(firstName, lastName, review.user);
+
+        // Mettre à jour l'avis
+        product.reviews[i] = {
+          ...review.toObject(),
+          userId: tempUserId,
+          firstName: firstName || 'Anonyme',
+          lastName: lastName || '',
+          user: review.user || `${firstName} ${lastName}`,
+          createdAt: review.createdAt || new Date()
+        };
+
+        productModified = true;
+        totalMigrated++;
+        
+        console.log(`  🔄 Avis ${i + 1} migré:`, {
+          originalUser: review.user,
+          newUserId: tempUserId,
+          firstName,
+          lastName
+        });
       }
 
-      // ✅ Sauvegarder le produit si modifié
+      // Sauvegarder le produit si modifié
       if (productModified) {
-        try {
-          await product.save();
-          console.log(`   💾 Produit sauvegardé avec succès`);
-        } catch (saveError) {
-          console.error(`   ❌ Erreur sauvegarde:`, saveError.message);
-          totalErrors++;
-        }
+        await product.save();
+        console.log(`  💾 Produit sauvegardé`);
       }
-      
-      console.log(''); // Ligne vide pour lisibilité
     }
 
-    // ✅ Rapport final
-    const report = {
-      migrated: totalMigrated,
-      alreadyMigrated: totalAlreadyMigrated,
-      products: products.length,
-      errors: totalErrors
-    };
-
-    console.log('📊 RAPPORT DE MIGRATION:');
-    console.log('================================');
-    console.log(`✅ Avis migrés:           ${report.migrated}`);
-    console.log(`⏭️  Avis déjà migrés:     ${report.alreadyMigrated}`);
-    console.log(`📦 Produits traités:      ${report.products}`);
-    console.log(`❌ Erreurs rencontrées:   ${report.errors}`);
-    console.log('================================\n');
-
-    return report;
+    console.log('\n📊 Résumé de la migration:');
+    console.log(`  ✅ ${totalMigrated} avis migrés`);
+    console.log(`  ⏭️  ${totalAlreadyMigrated} avis déjà migrés`);
+    console.log(`  📦 ${products.length} produits traités`);
 
   } catch (error) {
-    console.error('❌ ERREUR CRITIQUE lors de la migration:', error.message);
+    console.error('❌ Erreur lors de la migration:', error);
     
-    // ✅ Messages d'aide pour diagnostic
     if (error.message.includes('ECONNREFUSED')) {
       console.log('\n💡 Solutions possibles:');
       console.log('  1. Vérifiez que MONGODB_URI est définie dans votre .env');
       console.log('  2. Assurez-vous que votre URI MongoDB Atlas est correcte');
       console.log('  3. Vérifiez votre connexion internet');
-      console.log('  4. Si MongoDB local, assurez-vous qu\'il est démarré');
+      console.log('  4. Si vous utilisez MongoDB local, assurez-vous qu\'il est démarré');
     }
-    
-    if (error.message.includes('buffering timed out')) {
-      console.log('\n💡 Problème de timeout:');
-      console.log('  1. Vérifiez l\'IP Whitelist sur MongoDB Atlas');
-      console.log('  2. Testez la connexion depuis votre app principale');
-    }
-    
-    throw error;
   } finally {
-    // ✅ Fermeture propre de la connexion
-    if (mongoose.connection.readyState === 1) {
-      await mongoose.disconnect();
-      console.log('🔚 Connexion MongoDB fermée');
-    }
+    // Fermer la connexion
+    await mongoose.disconnect();
+    console.log('🔚 Connexion fermée');
   }
-}
-
-/**
- * Extrait firstName et lastName à partir des données d'avis
- * @param {Object} review - L'objet avis
- * @returns {Object} - {firstName, lastName}
- */
-function extractNames(review) {
-  let firstName = review.firstName;
-  let lastName = review.lastName;
-  
-  // Si pas de firstName/lastName, essayer d'extraire du champ 'user'
-  if (!firstName && !lastName && review.user) {
-    const nameParts = review.user.trim().split(' ');
-    firstName = nameParts[0] || '';
-    lastName = nameParts.slice(1).join(' ') || '';
-  }
-  
-  return { firstName, lastName };
 }
 
 /**
  * Génère un userId temporaire basé sur le nom
  * ⚠️ ATTENTION: Cette méthode est pour la migration uniquement
  * Dans un vrai système, utilisez les vrais IDs utilisateurs
- * @param {string} firstName 
- * @param {string} lastName 
- * @param {string} fullName 
- * @returns {string} - userId temporaire
  */
 function generateTempUserId(firstName, lastName, fullName) {
   const name = fullName || `${firstName} ${lastName}`;
-  const hash = name.toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/[^a-z0-9]/g, ''); // Nettoyer les caractères spéciaux
-  const timestamp = Date.now().toString().slice(-6);
+  const hash = name.toLowerCase().replace(/\s+/g, '');
+  const timestamp = Date.now().toString().slice(-6); // 6 derniers chiffres
   return `temp_${hash}_${timestamp}`;
 }
 
 /**
  * Version alternative si vous avez une table Users
  * Cette fonction essaie de trouver le vrai userId
- * @param {string} firstName 
- * @param {string} lastName 
- * @param {string} fullName 
- * @returns {string} - userId réel ou temporaire
  */
 async function findRealUserId(firstName, lastName, fullName) {
-  // ✅ Si vous avez un modèle User, décommentez et adaptez:
+  // Si vous avez un modèle User, décommentez et adaptez:
   /*
-  try {
-    const User = require('../models/user');
-    
-    let user = null;
-    
-    // Chercher par prénom et nom
-    if (firstName && lastName) {
-      user = await User.findOne({ 
-        firstName: new RegExp(`^${firstName}$`, 'i'), 
-        lastName: new RegExp(`^${lastName}$`, 'i') 
-      });
-    }
-    
-    // Si pas trouvé, chercher par nom complet
-    if (!user && fullName) {
-      const [fName, ...lNameParts] = fullName.split(' ');
-      const lName = lNameParts.join(' ');
-      user = await User.findOne({ 
-        $or: [
-          { 
-            firstName: new RegExp(`^${fName}$`, 'i'), 
-            lastName: new RegExp(`^${lName}$`, 'i') 
-          },
-          { 
-            email: new RegExp(`${fullName.replace(/\s+/g, '.')}@`, 'i') 
-          }
-        ]
-      });
-    }
-    
-    if (user) {
-      console.log(`   🎯 Utilisateur réel trouvé: ${user._id}`);
-      return user._id.toString();
-    }
-  } catch (error) {
-    console.log(`   ⚠️  Erreur recherche utilisateur: ${error.message}`);
+  const User = require('../models/user');
+  
+  let user = null;
+  
+  // Chercher par prénom et nom
+  if (firstName && lastName) {
+    user = await User.findOne({ 
+      firstName: new RegExp(firstName, 'i'), 
+      lastName: new RegExp(lastName, 'i') 
+    });
+  }
+  
+  // Si pas trouvé, chercher par nom complet
+  if (!user && fullName) {
+    const [fName, ...lNameParts] = fullName.split(' ');
+    const lName = lNameParts.join(' ');
+    user = await User.findOne({ 
+      firstName: new RegExp(fName, 'i'), 
+      lastName: new RegExp(lName, 'i') 
+    });
+  }
+  
+  if (user) {
+    return user._id.toString();
   }
   */
   
@@ -263,31 +167,17 @@ async function findRealUserId(firstName, lastName, fullName) {
   return generateTempUserId(firstName, lastName, fullName);
 }
 
-// ✅ Point d'entrée principal
+// Lancer la migration
 if (require.main === module) {
-  console.log('🌟 MIGRATION DES AVIS - MonSavonVert');
-  console.log('=====================================\n');
-  
   migrateReviews()
-    .then((report) => {
-      console.log('🎉 MIGRATION TERMINÉE AVEC SUCCÈS');
-      
-      if (report.errors > 0) {
-        console.log('⚠️  Attention: Des erreurs ont été rencontrées');
-        process.exit(1);
-      } else {
-        process.exit(0);
-      }
+    .then(() => {
+      console.log('🎉 Migration terminée avec succès');
+      process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 ÉCHEC DE LA MIGRATION:', error.message);
+      console.error('💥 Échec de la migration:', error);
       process.exit(1);
     });
 }
 
-module.exports = { 
-  migrateReviews, 
-  extractNames, 
-  generateTempUserId, 
-  findRealUserId 
-};
+module.exports = { migrateReviews };

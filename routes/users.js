@@ -1,387 +1,211 @@
-const express = require('express'); 
-const router = express.Router(); 
+var express = require('express'); 
+var router = express.Router(); 
+
+require('../models/connection');
 const mongoose = require('mongoose');
+const User = require('../models/user');
+const { checkBody } = require('../modules/checkBody'); 
 const bcrypt = require('bcryptjs');
 const uid2 = require('uid2'); 
 
-// ✅ Import des modèles et utilitaires
-require('../models/connection');
-const User = require('../models/user');
-const { checkBody } = require('../modules/checkBody'); 
-
-/**
- * Validation du mot de passe selon les critères de sécurité
- * @param {string} password - Le mot de passe à valider
- * @returns {boolean} - True si le mot de passe est valide
- */
 const validatePassword = (password) => {
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
   return passwordRegex.test(password);
 };
 
-/**
- * Middleware de validation d'ObjectId MongoDB
- * @param {Object} req - Request object
- * @param {Object} res - Response object  
- * @param {Function} next - Next function
- */
-const validateObjectId = (req, res, next) => {
-  const { id } = req.params;
-  
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    console.error('❌ [Users] ID invalide fourni:', id);
-    return res.status(400).json({ 
-      result: false, 
-      error: 'ID utilisateur invalide.',
-      providedId: id
-    });
+router.post('/signup', (req, res) => {
+  // Vérifiez que tous les champs requis sont présents
+  if (!checkBody(req.body, ['firstName', 'lastName', 'email', 'password'])) {
+    return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
-  
-  next();
-};
 
-/**
- * Middleware d'authentification par token
- * @param {Object} req - Request object
- * @param {Object} res - Response object  
- * @param {Function} next - Next function
- */
-const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  // Vérifiez si l'utilisateur existe déjà avec l'email
+  User.findOne({ email: req.body.email.toLowerCase() }).then(data => {
+    if (data === null) {
+      // Hachez le mot de passe
+      const hash = bcrypt.hashSync(req.body.password, 10);
+
+      // Mettre en majuscule la première lettre du prénom et du nom
+      const formattedFirstName = req.body.firstName.charAt(0).toUpperCase() + req.body.firstName.slice(1).toLowerCase();
+      const formattedLastName = req.body.lastName.charAt(0).toUpperCase() + req.body.lastName.slice(1).toLowerCase();
+
+      // Créez un nouvel utilisateur avec tous les champs requis
+      const newUser = new User({
+        firstName: formattedFirstName,
+        lastName: formattedLastName,
+        email: req.body.email.toLowerCase(),
+        password: hash,
+        role: req.body.role || 'user', // Par défaut, le rôle est "user"
+        addresses: req.body.addresses || [], // Par défaut, aucune adresse
+        phone: req.body.phone || null,
+        termsAccepted: req.body.termsAccepted || false,
+        token: uid2(32),
+      });
+
+      // Sauvegardez l'utilisateur dans la base de données
+      newUser.save().then(newDoc => {
+        console.log('User saved:', newDoc); // Vérifiez que le token et l'ID utilisateur sont bien présents ici
+        res.status(201).json({
+          result: true,
+          token: newDoc.token,
+          userId: newDoc._id, // Ajoutez l'ID utilisateur dans la réponse
+        });
+      }).catch(err => {
+        console.error('Error saving user:', err);
+        res.status(500).json({ result: false, error: 'Failed to save user' });
+      });
+    } else {
+      res.status(409).json({ result: false, error: 'User already exists' });
+    }
+  }).catch(err => {
+    res.status(500).json({ result: false, error: 'Internal server error' });
+  });
+});
+
+router.post('/signin', (req, res) => {
+  if (!checkBody(req.body, ['email', 'password'])) {
+    return res.status(400).json({ result: false, error: 'Missing or empty fields' });
+  }
+
+  User.findOne({ email: req.body.email.toLowerCase() }).select('+password').then(data => {
+    if (data && bcrypt.compareSync(req.body.password, data.password)) {
+      res.status(200).json({
+        result: true,
+        userId: data._id, // Inclure l'ID utilisateur
+        token: data.token,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        role: data.role,
+      });
+    } else {
+      res.status(401).json({ result: false, error: 'Adresse e-mail non trouvée ou mot de passe incorrect' });
+    }
+  }).catch(err => {
+    res.status(500).json({ result: false, error: 'Internal server error' });
+  });
+});
+
+router.get('/me', (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1]; // Récupère le token depuis les headers
 
   if (!token) {
-    return res.status(401).json({ 
-      result: false, 
-      error: 'Token d\'authentification requis.' 
-    });
+    return res.status(401).json({ result: false, error: 'Token manquant.' });
   }
 
-  try {
-    const user = await User.findOne({ token });
+  User.findOne({ token }).then(user => {
     if (!user) {
-      return res.status(403).json({ 
-        result: false, 
-        error: 'Token invalide.' 
-      });
-    }
-    
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('❌ [Users] Erreur d\'authentification:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur d\'authentification.' 
-    });
-  }
-};
-
-// ✅ ===== ROUTES SPÉCIFIQUES EN PREMIER (avant /:id) =====
-
-/**
- * Route d'inscription utilisateur
- */
-router.post('/signup', async (req, res) => {
-  console.log('📝 [Users] Tentative d\'inscription');
-  
-  try {
-    // Validation des champs requis
-    if (!checkBody(req.body, ['firstName', 'lastName', 'email', 'password'])) {
-      return res.status(400).json({ 
-        result: false, 
-        error: 'Champs obligatoires manquants' 
-      });
+      return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    const { firstName, lastName, email, password, role, addresses, phone, termsAccepted } = req.body;
-
-    // Vérification si l'utilisateur existe déjà
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    
-    if (existingUser) {
-      console.log('⚠️ [Users] Tentative d\'inscription avec email existant:', email);
-      return res.status(409).json({ 
-        result: false, 
-        error: 'Un utilisateur avec cet email existe déjà' 
-      });
-    }
-
-    // Hashage du mot de passe
-    const hashedPassword = bcrypt.hashSync(password, 10);
-
-    // Formatage des noms (première lettre en majuscule)
-    const formattedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-    const formattedLastName = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase();
-
-    // Création du nouvel utilisateur
-    const newUser = new User({
-      firstName: formattedFirstName,
-      lastName: formattedLastName,
-      email: email.toLowerCase(),
-      password: hashedPassword,
-      role: role || 'user',
-      addresses: addresses || [],
-      phone: phone || null,
-      termsAccepted: termsAccepted || false,
-      token: uid2(32),
-    });
-
-    const savedUser = await newUser.save();
-    
-    console.log('✅ [Users] Utilisateur créé avec succès:', savedUser._id);
-    
-    res.status(201).json({
-      result: true,
-      token: savedUser.token,
-      userId: savedUser._id,
-      message: 'Utilisateur créé avec succès'
-    });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur lors de l\'inscription:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la création de l\'utilisateur' 
-    });
-  }
-});
-
-/**
- * Route de connexion utilisateur
- */
-router.post('/signin', async (req, res) => {
-  console.log('🔐 [Users] Tentative de connexion');
-  
-  try {
-    if (!checkBody(req.body, ['email', 'password'])) {
-      return res.status(400).json({ 
-        result: false, 
-        error: 'Email et mot de passe requis' 
-      });
-    }
-
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      console.log('⚠️ [Users] Tentative de connexion échouée pour:', email);
-      return res.status(401).json({ 
-        result: false, 
-        error: 'Email ou mot de passe incorrect' 
-      });
-    }
-
-    console.log('✅ [Users] Connexion réussie pour:', user.email);
-    
     res.status(200).json({
       result: true,
-      userId: user._id,
-      token: user.token,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-    });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur lors de la connexion:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la connexion' 
-    });
-  }
-});
-
-/**
- * Route pour obtenir les informations de l'utilisateur connecté
- */
-router.get('/me', authenticateToken, (req, res) => {
-  console.log('👤 [Users] Récupération des données utilisateur connecté');
-  
-  const user = req.user;
-  
-  res.status(200).json({
-    result: true,
-    user: {
-      _id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      addresses: user.addresses,
-      isSubscribedToNewsletter: user.isSubscribedToNewsletter,
-      role: user.role
-    },
-  });
-});
-
-/**
- * Route de test pour vérifier le bon fonctionnement
- */
-router.get('/test', (req, res) => {
-  console.log('🧪 [Users] Route de test appelée');
-  res.json({ 
-    result: true, 
-    message: 'Routes utilisateurs opérationnelles',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// ✅ ===== ROUTES AVEC PARAMÈTRES (après les routes spécifiques) =====
-
-/**
- * Route pour obtenir un utilisateur par ID
- * ⚠️ IMPORTANT: Cette route DOIT être après /me et /test pour éviter les conflits
- */
-router.get('/:id', validateObjectId, async (req, res) => {
-  const userId = req.params.id;
-  console.log('🔍 [Users] Récupération des données pour l\'ID:', userId);
-
-  try {
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      console.error('❌ [Users] Utilisateur introuvable pour l\'ID:', userId);
-      return res.status(404).json({ 
-        result: false, 
-        error: 'Utilisateur introuvable' 
-      });
-    }
-
-    console.log('✅ [Users] Données utilisateur récupérées pour:', user.email);
-    
-    res.status(200).json({ 
-      result: true, 
       user: {
         _id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         addresses: user.addresses,
-        phone: user.phone,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
-      }
+        isSubscribedToNewsletter: user.isSubscribedToNewsletter,
+      },
     });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur lors de la récupération:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la récupération des données utilisateur' 
-    });
-  }
+  }).catch(err => {
+    console.error('❌ [Backend] Erreur lors de la récupération des données utilisateur :', err);
+    res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+  });
 });
 
-/**
- * Route pour mettre à jour un utilisateur
- */
-router.put('/update/:id', validateObjectId, async (req, res) => {
+router.put('/update/:id', (req, res) => {
   const userId = req.params.id;
-  console.log('✏️ [Users] Mise à jour de l\'utilisateur:', userId);
 
-  try {
-    const user = await User.findById(userId);
-    
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.error('❌ [Backend] ID utilisateur invalide:', userId);
+    return res.status(400).json({ result: false, error: 'ID utilisateur invalide.' });
+  }
+
+  User.findById(userId).then(user => {
     if (!user) {
-      console.error('❌ [Users] Utilisateur introuvable pour mise à jour:', userId);
-      return res.status(404).json({ 
-        result: false, 
-        error: 'Utilisateur introuvable' 
-      });
+      console.error('❌ [Backend] Utilisateur introuvable pour l\'ID:', userId);
+      return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    // Application des mises à jour
+    // Mise à jour des champs
     const updates = req.body;
     Object.keys(updates).forEach(key => {
-      if (key !== 'password' && key !== 'token') { // Éviter la modification directe du mot de passe
-        user[key] = updates[key];
-      }
+      user[key] = updates[key];
     });
 
-    const updatedUser = await user.save();
-    
-    console.log('✅ [Users] Utilisateur mis à jour avec succès:', updatedUser._id);
-    
-    res.status(200).json({ 
-      result: true, 
-      user: updatedUser 
-    });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur lors de la mise à jour:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la mise à jour de l\'utilisateur' 
-    });
-  }
+    user.save()
+      .then(updatedUser => {
+        console.log('✅ [Backend] Utilisateur mis à jour avec succès:', updatedUser);
+        res.status(200).json({ result: true, user: updatedUser });
+      })
+      .catch(err => {
+        console.error('❌ [Backend] Erreur lors de la sauvegarde de l\'utilisateur:', err);
+        res.status(500).json({ result: false, error: 'Échec de la mise à jour.' });
+      });
+  }).catch(err => {
+    console.error('❌ [Backend] Erreur lors de la recherche de l\'utilisateur:', err);
+    res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+  });
 });
 
-/**
- * Route pour gérer l'abonnement à la newsletter
- */
-router.put('/subscribe-newsletter/:id', validateObjectId, async (req, res) => {
+router.get('/:id', (req, res) => {
+  const userId = req.params.id;
+  console.log('🔍 [Backend] Récupération des données utilisateur pour l\'ID:', userId);
+
+  // Vérifiez si l'ID est valide
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.error('❌ [Backend] ID utilisateur invalide:', userId);
+    return res.status(400).json({ result: false, error: 'ID utilisateur invalide.' });
+  }
+
+  User.findById(userId)
+    .then(user => {
+      if (!user) {
+        console.error('❌ [Backend] Utilisateur introuvable pour l\'ID:', userId);
+        return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
+      }
+
+      console.log('✅ [Backend] Données utilisateur récupérées:', user);
+      res.status(200).json({ result: true, user });
+    })
+    .catch(err => {
+      console.error('❌ [Backend] Erreur lors de la récupération des données utilisateur:', err);
+      res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
+    });
+});
+
+router.put('/subscribe-newsletter/:id', (req, res) => {
   const userId = req.params.id;
   const { isSubscribed } = req.body;
-  
-  console.log('📧 [Users] Mise à jour abonnement newsletter:', userId, isSubscribed);
 
   if (typeof isSubscribed !== 'boolean') {
-    return res.status(400).json({ 
-      result: false, 
-      error: 'Valeur d\'abonnement invalide' 
-    });
+    return res.status(400).json({ result: false, error: 'Invalid value for subscription status.' });
   }
 
-  try {
-    const updatedUser = await User.findByIdAndUpdate(
-      userId, 
-      { isSubscribedToNewsletter: isSubscribed }, 
-      { new: true }
-    );
-    
-    if (!updatedUser) {
-      return res.status(404).json({ 
-        result: false, 
-        error: 'Utilisateur non trouvé' 
-      });
-    }
-    
-    console.log('✅ [Users] Abonnement newsletter mis à jour');
-    
-    res.status(200).json({ 
-      result: true, 
-      user: updatedUser 
+  User.findByIdAndUpdate(userId, { isSubscribedToNewsletter: isSubscribed }, { new: true })
+    .then(updatedUser => {
+      if (!updatedUser) {
+        return res.status(404).json({ result: false, error: 'User not found.' });
+      }
+      res.status(200).json({ result: true, user: updatedUser });
+    })
+    .catch(err => {
+      console.error('Error updating subscription status:', err);
+      res.status(500).json({ result: false, error: 'Internal server error.' });
     });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur mise à jour newsletter:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la mise à jour de l\'abonnement' 
-    });
-  }
 });
 
-/**
- * Route pour changer le mot de passe
- */
-router.put('/change-password/:id', validateObjectId, async (req, res) => {
+router.put('/change-password/:id', async (req, res) => {
   const userId = req.params.id;
   const { currentPassword, newPassword } = req.body;
-  
-  console.log('🔒 [Users] Demande de changement de mot de passe:', userId);
 
   if (!currentPassword || !newPassword) {
-    return res.status(400).json({ 
-      result: false, 
-      error: 'Mot de passe actuel et nouveau mot de passe requis' 
-    });
+    return res.status(400).json({ result: false, error: 'Champs manquants.' });
   }
 
-  // Validation du nouveau mot de passe
+  // Valider le nouveau mot de passe
   if (!validatePassword(newPassword)) {
     return res.status(400).json({
       result: false,
@@ -391,47 +215,26 @@ router.put('/change-password/:id', validateObjectId, async (req, res) => {
 
   try {
     const user = await User.findById(userId).select('+password');
-    
     if (!user) {
-      return res.status(404).json({ 
-        result: false, 
-        error: 'Utilisateur introuvable' 
-      });
+      return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    // Vérification de l'ancien mot de passe
-    const isCurrentPasswordValid = bcrypt.compareSync(currentPassword, user.password);
-    
-    if (!isCurrentPasswordValid) {
-      console.log('⚠️ [Users] Tentative de changement avec mauvais mot de passe actuel');
-      return res.status(401).json({ 
-        result: false, 
-        error: 'Mot de passe actuel incorrect' 
-      });
+    // Vérifier si l'ancien mot de passe est correct
+    const isMatch = bcrypt.compareSync(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ result: false, error: 'Mot de passe actuel incorrect.' });
     }
 
-    // Hashage et sauvegarde du nouveau mot de passe
-    const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
-    user.password = hashedNewPassword;
-    
+    // Hacher le nouveau mot de passe
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    user.password = hashedPassword;
+
     await user.save();
-    
-    console.log('✅ [Users] Mot de passe mis à jour avec succès');
-    
-    res.status(200).json({ 
-      result: true, 
-      message: 'Mot de passe mis à jour avec succès' 
-    });
-
-  } catch (error) {
-    console.error('❌ [Users] Erreur changement mot de passe:', error);
-    res.status(500).json({ 
-      result: false, 
-      error: 'Erreur lors de la mise à jour du mot de passe' 
-    });
+    res.status(200).json({ result: true, message: 'Mot de passe mis à jour avec succès.' });
+  } catch (err) {
+    console.error('❌ [Backend] Erreur lors de la mise à jour du mot de passe:', err);
+    res.status(500).json({ result: false, error: 'Erreur interne du serveur.' });
   }
 });
-
-console.log('✅ Routes utilisateurs chargées avec succès');
 
 module.exports = router;
