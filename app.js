@@ -15,16 +15,20 @@ console.log('MONGODB_URI:', mongoURI ? '✅ Définie' : '❌ Manquante');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('PORT:', process.env.PORT || 8888);
 
+// ✅ IMPORTANT: Forcer NODE_ENV=production sur Vercel
+if (process.env.VERCEL) {
+  process.env.NODE_ENV = 'production';
+  console.log('🚀 Détection Vercel - NODE_ENV forcé à production');
+}
+
 if (!mongoURI) {
   console.error('❌ ERREUR CRITIQUE: Aucune URI MongoDB trouvée');
   console.error('📝 Assurez-vous d\'avoir MONGODB_URI dans vos variables d\'environnement');
   process.exit(1);
 }
 
-// ✅ Connexion MongoDB avec configuration optimisée pour Vercel
+// ✅ Connexion MongoDB avec configuration optimisée pour Vercel (sans warnings deprecated)
 mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 30000, // 30 secondes pour Vercel
   socketTimeoutMS: 75000,          // 75 secondes pour les requêtes longues
   maxPoolSize: 10,                 // Pool de connexions
@@ -106,14 +110,38 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Routes principales
-app.use('/users', usersRouter);
-app.use('/products', productsRouter);
-app.use('/customers', customersRouter);
-app.use('/stripe', stripeRoutes);
-app.use('/api', stripeCheckoutRoutes);
-app.use('/api', confirmOrderRouter); 
-app.use('/orders', ordersRouter);
+// ✅ Routes principales avec diagnostic d'erreurs
+try {
+  console.log('📍 Chargement des routes...');
+  
+  console.log('  - Users routes...');
+  app.use('/users', usersRouter);
+  
+  console.log('  - Products routes...');
+  app.use('/products', productsRouter);
+  
+  console.log('  - Customers routes...');
+  app.use('/customers', customersRouter);
+  
+  console.log('  - Stripe webhook routes...');
+  app.use('/stripe', stripeRoutes);
+  
+  console.log('  - Stripe checkout routes...');
+  app.use('/api', stripeCheckoutRoutes);
+  
+  console.log('  - Confirm order routes...');
+  app.use('/api', confirmOrderRouter);
+  
+  console.log('  - Orders routes...');
+  app.use('/orders', ordersRouter);
+  
+  console.log('✅ Toutes les routes chargées avec succès');
+  
+} catch (routeError) {
+  console.error('❌ ERREUR lors du chargement des routes:', routeError.message);
+  console.error('Stack:', routeError.stack);
+  throw routeError;
+}
 
 // ✅ Route racine pour vérification
 app.get('/', (req, res) => {
