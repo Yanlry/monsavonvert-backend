@@ -11,6 +11,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var usersRouter = require('./routes/users');
+var passwordResetRouter = require('./routes/password-reset');
 var productsRouter = require('./routes/products');
 var customersRouter = require('./routes/customers');
 var stripeRoutes = require('./routes/stripe-webhook');
@@ -59,6 +60,7 @@ app.use((req, res, next) => {
 
 // Vos routes existantes
 app.use('/users', usersRouter);
+app.use('/api', passwordResetRouter);
 app.use('/products', productsRouter);
 app.use('/customers', customersRouter);
 app.use('/stripe', stripeRoutes);

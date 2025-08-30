@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs'); // AJOUTÉ : Pour hasher les mots de passe
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -94,7 +95,24 @@ const userSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Middleware pour formater les champs avant de sauvegarder
+// AJOUTÉ : Middleware pour hasher le mot de passe avant de sauvegarder
+userSchema.pre('save', async function(next) {
+  // Si le mot de passe n'a pas été modifié, passer au middleware suivant
+  if (!this.isModified('password')) {
+    return next();
+  }
+  
+  try {
+    // Hasher le mot de passe avec bcrypt
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Middleware pour formater les champs avant de sauvegarder (TON CODE EXISTANT)
 userSchema.pre('save', function (next) {
   if (this.firstName) {
     this.firstName = this.firstName.charAt(0).toUpperCase() + this.firstName.slice(1).toLowerCase();
@@ -115,6 +133,50 @@ userSchema.pre('save', function (next) {
   }
   next();
 });
+
+// AJOUTÉ : Méthode pour comparer les mots de passe lors de la connexion
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// AJOUTÉ : Méthode pour générer un token de récupération de mot de passe
+userSchema.methods.generateResetPasswordToken = function() {
+  // Générer un token aléatoire de 32 caractères
+  const resetToken = require('crypto').randomBytes(32).toString('hex');
+  
+  // Hasher le token avant de le sauvegarder en base de données
+  this.resetPasswordToken = require('crypto')
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  // Définir l'expiration du token (10 minutes)
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+  
+  // Retourner le token non hashé (c'est celui qu'on enverra par email)
+  return resetToken;
+};
+
+// AJOUTÉ : Méthode pour vérifier si le token de récupération est valide
+userSchema.methods.isResetPasswordTokenValid = function(token) {
+  // Hasher le token reçu pour le comparer avec celui en base
+  const hashedToken = require('crypto')
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+  
+  // Vérifier si le token correspond et n'est pas expiré
+  return (
+    this.resetPasswordToken === hashedToken &&
+    this.resetPasswordExpire > Date.now()
+  );
+};
+
+// AJOUTÉ : Méthode pour nettoyer les tokens de récupération après utilisation
+userSchema.methods.clearResetPasswordToken = function() {
+  this.resetPasswordToken = null;
+  this.resetPasswordExpire = null;
+};
 
 const User = mongoose.model('User', userSchema);
 
