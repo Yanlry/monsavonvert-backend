@@ -282,4 +282,47 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
   res.status(200).send("Webhook reçu et traité avec succès.");
 });
 
+
+// Route de test pour envoyer un email manuellement
+router.get("/test-email-simple", async (req, res) => {
+  try {
+    console.log('🧪 Test d\'envoi d\'email simple');
+    
+    // Créer un client et une commande factices pour le test
+    const testCustomer = {
+      firstName: 'Test',
+      lastName: 'Client', 
+      email: 'yanlry.mongo@gmail.com' // Ton email vérifié
+    };
+    
+    const testOrder = {
+      _id: 'TEST123456789',
+      items: [
+        {
+          name: 'Test Savon',
+          price: 10.99,
+          quantity: 2
+        }
+      ],
+      totalAmount: 21.98
+    };
+    
+    // Envoyer l'email de test
+    await sendOrderConfirmation(testCustomer, testOrder);
+    
+    res.json({
+      success: true,
+      message: 'Email de test envoyé !',
+      destinataire: testCustomer.email
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de l\'email de test:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+
 module.exports = router;
