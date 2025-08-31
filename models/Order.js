@@ -46,7 +46,7 @@ OrderSchema.pre('save', function(next) {
   // Synchroniser les frais de livraison
   this.shipping = this.shippingCost || 0;
   
-  // Définir les étiquettes de statut en français
+  // Définir les étiquettes de statut français
   const statusLabels = {
     'pending': 'En attente',
     'processing': 'En préparation',
