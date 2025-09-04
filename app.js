@@ -53,9 +53,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Tes routes existantes (AUCUN CHANGEMENT)
+// Tes routes existantes
 app.use('/users', usersRouter);
-app.use('/api', passwordResetRouter);
+app.use('/password-reset', passwordResetRouter); // 🔧 CORRECTION : Changé /api en /password-reset
 app.use('/products', productsRouter);
 app.use('/customers', customersRouter);
 app.use('/stripe', stripeRoutes);
