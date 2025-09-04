@@ -13,81 +13,129 @@ const validatePassword = (password) => {
   return passwordRegex.test(password);
 };
 
-router.post('/signup', (req, res) => {
+// NOUVEAU CODE SIGNUP - Sans hashage manuel (le middleware s'en charge)
+router.post('/signup', async (req, res) => {
+  console.log('🚀 DÉBUT INSCRIPTION');
+  console.log('📧 Email reçu:', req.body.email);
+  console.log('🔒 Mot de passe reçu (longueur):', req.body.password ? req.body.password.length : 'undefined');
+  
   // Vérifiez que tous les champs requis sont présents
   if (!checkBody(req.body, ['firstName', 'lastName', 'email', 'password'])) {
+    console.log('❌ Champs manquants');
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
 
-  // Vérifiez si l'utilisateur existe déjà avec l'email
-  User.findOne({ email: req.body.email.toLowerCase() }).then(data => {
-    if (data === null) {
-      // Hachez le mot de passe
-      const hash = bcrypt.hashSync(req.body.password, 10);
-
-      // Mettre en majuscule la première lettre du prénom et du nom
-      const formattedFirstName = req.body.firstName.charAt(0).toUpperCase() + req.body.firstName.slice(1).toLowerCase();
-      const formattedLastName = req.body.lastName.charAt(0).toUpperCase() + req.body.lastName.slice(1).toLowerCase();
-
-      // Créez un nouvel utilisateur avec tous les champs requis
-      const newUser = new User({
-        firstName: formattedFirstName,
-        lastName: formattedLastName,
-        email: req.body.email.toLowerCase(),
-        password: hash,
-        role: req.body.role || 'user', // Par défaut, le rôle est "user"
-        addresses: req.body.addresses || [], // Par défaut, aucune adresse
-        phone: req.body.phone || null,
-        termsAccepted: req.body.termsAccepted || false,
-        token: uid2(32),
-      });
-
-      // Sauvegardez l'utilisateur dans la base de données
-      newUser.save().then(newDoc => {
-        console.log('User saved:', newDoc); // Vérifiez que le token et l'ID utilisateur sont bien présents ici
-        res.status(201).json({
-          result: true,
-          token: newDoc.token,
-          userId: newDoc._id, // Ajoutez l'ID utilisateur dans la réponse
-        });
-      }).catch(err => {
-        console.error('Error saving user:', err);
-        res.status(500).json({ result: false, error: 'Failed to save user' });
-      });
-    } else {
-      res.status(409).json({ result: false, error: 'User already exists' });
+  try {
+    // Vérifiez si l'utilisateur existe déjà avec l'email
+    const existingUser = await User.findOne({ email: req.body.email.toLowerCase() });
+    
+    if (existingUser) {
+      console.log('❌ Email déjà utilisé');
+      return res.status(409).json({ result: false, error: 'User already exists' });
     }
-  }).catch(err => {
-    res.status(500).json({ result: false, error: 'Internal server error' });
-  });
+
+    console.log('✅ Email disponible, création du compte');
+    
+    // IMPORTANT : On ne hashe plus ici, le middleware s'en charge automatiquement
+    console.log('🔒 Le mot de passe sera hashé automatiquement par le middleware');
+
+    // Mettre en majuscule la première lettre du prénom et du nom
+    const formattedFirstName = req.body.firstName.charAt(0).toUpperCase() + req.body.firstName.slice(1).toLowerCase();
+    const formattedLastName = req.body.lastName.charAt(0).toUpperCase() + req.body.lastName.slice(1).toLowerCase();
+
+    // Créez un nouvel utilisateur - le middleware hashera automatiquement le password
+    const newUser = new User({
+      firstName: formattedFirstName,
+      lastName: formattedLastName,
+      email: req.body.email.toLowerCase(),
+      password: req.body.password, // Mot de passe en clair - sera hashé par le middleware
+      role: req.body.role || 'user',
+      addresses: req.body.addresses || [],
+      phone: req.body.phone || null,
+      termsAccepted: req.body.termsAccepted || false,
+      token: uid2(32),
+    });
+
+    // Sauvegardez l'utilisateur - le middleware pre('save') va hasher le password
+    const savedUser = await newUser.save();
+    
+    console.log('✅ Utilisateur sauvegardé avec succès');
+    console.log('📧 Email:', savedUser.email);
+    console.log('🆔 ID:', savedUser._id);
+    console.log('🔑 Token:', savedUser.token.substring(0, 10) + '...');
+    
+    res.status(201).json({
+      result: true,
+      token: savedUser.token,
+      userId: savedUser._id,
+    });
+    
+  } catch (err) {
+    console.error('❌ Erreur sauvegarde utilisateur:', err);
+    res.status(500).json({ result: false, error: 'Failed to save user' });
+  }
 });
 
-router.post('/signin', (req, res) => {
+// NOUVEAU CODE SIGNIN - Avec la méthode comparePassword du modèle
+router.post('/signin', async (req, res) => {
+  console.log('🔐 DÉBUT CONNEXION');
+  console.log('📧 Email de connexion:', req.body.email);
+  console.log('🔒 Mot de passe fourni (longueur):', req.body.password ? req.body.password.length : 'undefined');
+  
   if (!checkBody(req.body, ['email', 'password'])) {
+    console.log('❌ Champs manquants pour la connexion');
     return res.status(400).json({ result: false, error: 'Missing or empty fields' });
   }
 
-  User.findOne({ email: req.body.email.toLowerCase() }).select('+password').then(data => {
-    if (data && bcrypt.compareSync(req.body.password, data.password)) {
+  try {
+    const emailToSearch = req.body.email.toLowerCase().trim();
+    console.log('🔍 Recherche utilisateur avec email:', emailToSearch);
+
+    // Trouver l'utilisateur avec le password inclus
+    const user = await User.findOne({ email: emailToSearch }).select('+password');
+    
+    console.log('🔍 Résultat recherche utilisateur:', user ? 'TROUVÉ' : 'NON TROUVÉ');
+    
+    if (!user) {
+      console.log('❌ UTILISATEUR NON TROUVÉ AVEC CET EMAIL');
+      return res.status(401).json({ result: false, error: 'Adresse e-mail non trouvée ou mot de passe incorrect' });
+    }
+    
+    console.log('👤 Utilisateur trouvé:');
+    console.log('  - Email:', user.email);
+    console.log('  - Nom:', user.firstName, user.lastName);
+    console.log('  - ID:', user._id);
+    console.log('  - Mot de passe hashé présent:', !!user.password);
+    console.log('  - Longueur hash:', user.password ? user.password.length : 'undefined');
+    
+    // Utiliser la méthode comparePassword du modèle au lieu de bcrypt.compareSync
+    const passwordMatch = await user.comparePassword(req.body.password);
+    console.log('🔒 Comparaison mot de passe:', passwordMatch ? 'MATCH ✅' : 'NO MATCH ❌');
+    
+    if (passwordMatch) {
+      console.log('✅ CONNEXION RÉUSSIE');
       res.status(200).json({
         result: true,
-        userId: data._id, // Inclure l'ID utilisateur
-        token: data.token,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        role: data.role,
+        userId: user._id,
+        token: user.token,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
       });
     } else {
+      console.log('❌ MOT DE PASSE INCORRECT');
       res.status(401).json({ result: false, error: 'Adresse e-mail non trouvée ou mot de passe incorrect' });
     }
-  }).catch(err => {
+    
+  } catch (err) {
+    console.error('❌ Erreur lors de la recherche utilisateur:', err);
     res.status(500).json({ result: false, error: 'Internal server error' });
-  });
+  }
 });
 
 router.get('/me', (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1]; // Récupère le token depuis les headers
+  const token = req.headers.authorization?.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ result: false, error: 'Token manquant.' });
@@ -129,7 +177,6 @@ router.put('/update/:id', (req, res) => {
       return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    // Mise à jour des champs
     const updates = req.body;
     Object.keys(updates).forEach(key => {
       user[key] = updates[key];
@@ -154,7 +201,6 @@ router.get('/:id', (req, res) => {
   const userId = req.params.id;
   console.log('🔍 [Backend] Récupération des données utilisateur pour l\'ID:', userId);
 
-  // Vérifiez si l'ID est valide
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     console.error('❌ [Backend] ID utilisateur invalide:', userId);
     return res.status(400).json({ result: false, error: 'ID utilisateur invalide.' });
@@ -197,6 +243,7 @@ router.put('/subscribe-newsletter/:id', (req, res) => {
     });
 });
 
+// CHANGEMENT DE MOT DE PASSE - Utilise maintenant la méthode comparePassword
 router.put('/change-password/:id', async (req, res) => {
   const userId = req.params.id;
   const { currentPassword, newPassword } = req.body;
@@ -205,7 +252,6 @@ router.put('/change-password/:id', async (req, res) => {
     return res.status(400).json({ result: false, error: 'Champs manquants.' });
   }
 
-  // Valider le nouveau mot de passe
   if (!validatePassword(newPassword)) {
     return res.status(400).json({
       result: false,
@@ -219,15 +265,14 @@ router.put('/change-password/:id', async (req, res) => {
       return res.status(404).json({ result: false, error: 'Utilisateur introuvable.' });
     }
 
-    // Vérifier si l'ancien mot de passe est correct
-    const isMatch = bcrypt.compareSync(currentPassword, user.password);
+    // Utiliser la méthode comparePassword du modèle
+    const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({ result: false, error: 'Mot de passe actuel incorrect.' });
     }
 
-    // Hacher le nouveau mot de passe
-    const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    user.password = hashedPassword;
+    // Assigner le nouveau mot de passe - le middleware va le hasher automatiquement
+    user.password = newPassword;
 
     await user.save();
     res.status(200).json({ result: true, message: 'Mot de passe mis à jour avec succès.' });
