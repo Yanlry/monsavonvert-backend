@@ -20,7 +20,7 @@ const sesClient = new SESClient({
 const sendEmailViaSES = async ({ to, subject, htmlContent, textContent }) => {
   try {
     const params = {
-      Source: process.env.SES_FROM_EMAIL, // L'email vérifié dans SES
+      Source: process.env.SES_FROM_EMAIL || "contact@monsavonvert.com", // CORRECTION: Utilise SES_FROM_EMAIL au lieu de SENDER_EMAIL
       Destination: {
         ToAddresses: [to],
       },
@@ -41,6 +41,9 @@ const sendEmailViaSES = async ({ to, subject, htmlContent, textContent }) => {
         },
       },
     };
+
+    console.log('📧 Envoi depuis:', params.Source); // Log pour débugger
+    console.log('📧 Envoi vers:', to);
 
     const command = new SendEmailCommand(params);
     const response = await sesClient.send(command);
@@ -202,7 +205,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     
     // URL pour réinitialiser le mot de passe (gardée identique)
     const resetURL = process.env.NODE_ENV === 'production' 
-      ? `https://monsavonvert-frontend.vercel.app/reset-password/${resetToken}`
+      ? `https://www.monsavonvert.com/reset-password/${resetToken}`
       : `http://localhost:3001/reset-password/${resetToken}`;
 
     // Template HTML (gardé identique)
@@ -315,7 +318,7 @@ const testEmailConfiguration = async () => {
     }
     
     console.log('✅ Variables d\'environnement AWS présentes');
-    console.log('📧 Sender email:', process.env.SES_FROM_EMAIL);
+    console.log('📧 Sender email:', process.env.SES_FROM_EMAIL); // CORRECTION: Affiche SES_FROM_EMAIL au lieu de SENDER_EMAIL
     console.log('🌍 Région AWS:', process.env.AWS_REGION || 'eu-north-1');
     
     // Test de connexion Amazon SES
