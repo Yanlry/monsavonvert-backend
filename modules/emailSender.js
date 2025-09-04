@@ -1,11 +1,11 @@
 // modules/emailSender.js
-// Version migrée vers Amazon SES (remplace SendGrid)
+// Version finale Amazon SES - remplace SendGrid complètement
 
 const { SESClient, SendEmailCommand, GetSendQuotaCommand } = require('@aws-sdk/client-ses');
 
-// Configuration du client Amazon SES (remplace le transporter Nodemailer)
+// Configuration Amazon SES
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION || "eu-north-1", // Stockholm par défaut
+  region: process.env.AWS_REGION || "eu-north-1",
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -13,14 +13,21 @@ const sesClient = new SESClient({
 });
 
 /**
- * Fonction utilitaire pour envoyer un email via Amazon SES
- * @param {Object} emailData - Données de l'email
- * @returns {Promise} - Résultat de l'envoi
+ * Fonction pour envoyer un email via Amazon SES
+ * UTILISE OBLIGATOIREMENT contact@monsavonvert.com
  */
 const sendEmailViaSES = async ({ to, subject, htmlContent, textContent }) => {
   try {
+    // FORCÉ : Utilise toujours contact@monsavonvert.com (email vérifié dans AWS SES)
+    const fromEmail = "contact@monsavonvert.com";
+    
+    console.log('📧 ENVOI EMAIL VIA AMAZON SES');
+    console.log('📧 Depuis:', fromEmail);
+    console.log('📧 Vers:', to);
+    console.log('📧 Sujet:', subject);
+
     const params = {
-      Source: process.env.SES_FROM_EMAIL || "contact@monsavonvert.com", // CORRECTION: Utilise SES_FROM_EMAIL au lieu de SENDER_EMAIL
+      Source: fromEmail, // Email vérifié dans SES
       Destination: {
         ToAddresses: [to],
       },
@@ -42,27 +49,30 @@ const sendEmailViaSES = async ({ to, subject, htmlContent, textContent }) => {
       },
     };
 
-    console.log('📧 Envoi depuis:', params.Source); // Log pour débugger
-    console.log('📧 Envoi vers:', to);
-
     const command = new SendEmailCommand(params);
     const response = await sesClient.send(command);
+    
+    console.log('✅ Email envoyé avec succès via Amazon SES');
+    console.log('📬 Message ID:', response.MessageId);
     
     return {
       messageId: response.MessageId,
       success: true
     };
   } catch (error) {
-    console.error('Erreur Amazon SES:', error.message);
+    console.error('❌ Erreur Amazon SES:', error.message);
+    
+    if (error.message.includes('Email address is not verified')) {
+      console.error('🚫 L\'email expéditeur n\'est pas vérifié dans AWS SES');
+      console.error('💡 Vérifiez que contact@monsavonvert.com est bien vérifié');
+    }
+    
     throw error;
   }
 };
 
 /**
  * Envoie un email de confirmation de commande
- * @param {Object} customer - Données du client (email, nom, etc.)
- * @param {Object} order - Données de la commande (items, total, etc.)
- * @returns {Promise} - Promesse résolue quand l'email est envoyé
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
@@ -79,7 +89,7 @@ const sendOrderConfirmation = async (customer, order) => {
       throw new Error('Aucun article dans la commande');
     }
     
-    // Format des produits pour l'email (gardé identique)
+    // Format des produits pour l'email
     const productsHtml = order.items.map(item => {
       const itemName = item.name || item.title || 'Produit sans nom';
       const itemPrice = item.price || 0;
@@ -100,7 +110,7 @@ const sendOrderConfirmation = async (customer, order) => {
     const orderId = order._id || 'INCONNUE';
     const totalAmount = order.totalAmount || order.total || 0;
 
-    // Template HTML (gardé identique)
+    // Template HTML de l'email
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #4CAF50; padding: 20px; text-align: center;">
@@ -145,7 +155,7 @@ const sendOrderConfirmation = async (customer, order) => {
       </div>
     `;
 
-    // Version texte (gardée identique)
+    // Version texte de l'email
     const textContent = `
 CONFIRMATION DE COMMANDE
 
@@ -162,7 +172,7 @@ Cordialement,
 L'équipe Mon Savon Vert
     `;
 
-    // Envoi via Amazon SES (remplace transporter.sendMail)
+    // Envoi de l'email via Amazon SES
     const info = await sendEmailViaSES({
       to: customer.email,
       subject: `Confirmation de votre commande #${orderId}`,
@@ -182,9 +192,6 @@ L'équipe Mon Savon Vert
 
 /**
  * Envoie un email de récupération de mot de passe
- * @param {Object} user - Données de l'utilisateur
- * @param {string} resetToken - Token de récupération
- * @returns {Promise} - Promesse résolue quand l'email est envoyé
  */
 const sendPasswordResetEmail = async (user, resetToken) => {
   try {
@@ -203,12 +210,12 @@ const sendPasswordResetEmail = async (user, resetToken) => {
 
     const userName = user.firstName || 'Utilisateur';
     
-    // URL pour réinitialiser le mot de passe (gardée identique)
+    // URL pour réinitialiser le mot de passe
     const resetURL = process.env.NODE_ENV === 'production' 
       ? `https://www.monsavonvert.com/reset-password/${resetToken}`
       : `http://localhost:3001/reset-password/${resetToken}`;
 
-    // Template HTML (gardé identique)
+    // Template HTML de l'email de récupération
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #2196F3; padding: 20px; text-align: center;">
@@ -255,7 +262,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
       </div>
     `;
 
-    // Version texte (gardée identique)
+    // Version texte de l'email
     const textContent = `
 RÉCUPÉRATION DE MOT DE PASSE
 
@@ -278,7 +285,7 @@ L'équipe Mon Savon Vert
     console.log('🔒 Configuration email récupération préparée, tentative d\'envoi...');
     console.log('🔒 URL de récupération:', resetURL);
     
-    // Envoi via Amazon SES (remplace transporter.sendMail)
+    // Envoi de l'email via Amazon SES
     const info = await sendEmailViaSES({
       to: user.email,
       subject: 'Récupération de votre mot de passe - Mon Savon Vert',
@@ -299,48 +306,45 @@ L'équipe Mon Savon Vert
   }
 };
 
-// Fonction pour tester la configuration email (adaptée pour Amazon SES)
+/**
+ * Test de la configuration Amazon SES
+ */
 const testEmailConfiguration = async () => {
   try {
     console.log('🔄 ===== TEST CONFIGURATION EMAIL AMAZON SES =====');
     
-    // Vérification des variables d'environnement AWS
     if (!process.env.AWS_ACCESS_KEY_ID) {
-      throw new Error('AWS_ACCESS_KEY_ID n\'est pas définie dans les variables d\'environnement');
+      throw new Error('AWS_ACCESS_KEY_ID n\'est pas définie');
     }
     
     if (!process.env.AWS_SECRET_ACCESS_KEY) {
-      throw new Error('AWS_SECRET_ACCESS_KEY n\'est pas définie dans les variables d\'environnement');
-    }
-    
-    if (!process.env.SES_FROM_EMAIL) {
-      throw new Error('SES_FROM_EMAIL n\'est pas définie dans les variables d\'environnement');
+      throw new Error('AWS_SECRET_ACCESS_KEY n\'est pas définie');
     }
     
     console.log('✅ Variables d\'environnement AWS présentes');
-    console.log('📧 Sender email:', process.env.SES_FROM_EMAIL); // CORRECTION: Affiche SES_FROM_EMAIL au lieu de SENDER_EMAIL
+    console.log('📧 Email expéditeur: contact@monsavonvert.com');
     console.log('🌍 Région AWS:', process.env.AWS_REGION || 'eu-north-1');
     
     // Test de connexion Amazon SES
     const command = new GetSendQuotaCommand({});
     const response = await sesClient.send(command);
     
-    console.log('✅ Configuration Amazon SES correcte. SES est accessible.');
+    console.log('✅ Configuration Amazon SES correcte');
     console.log('📊 Quotas SES:', response);
     console.log('✅ ===== CONFIGURATION EMAIL SES OK =====');
     
     return true;
   } catch (error) {
     console.error('❌ ===== ERREUR CONFIGURATION EMAIL SES =====');
-    console.error('❌ Erreur de configuration email:', error.message);
+    console.error('❌ Erreur:', error.message);
     return false;
   }
 };
 
-// Exécuter le test au démarrage du serveur
+// Test automatique au démarrage
 testEmailConfiguration();
 
-// Exporter les fonctions (gardé identique)
+// Export des fonctions
 module.exports = { 
   sendOrderConfirmation,
   sendPasswordResetEmail,
