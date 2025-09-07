@@ -365,365 +365,85 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     }
     
     // URL de réinitialisation (adaptez selon votre frontend)
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://monsavonvert.com'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://monsavonvert.com'}/reset-password/${resetToken}`;
     
     console.log('🔐 URL de reset générée:', resetUrl);
     
-    // Template HTML moderne pour l'email de récupération
+    // Template HTML pour l'email de récupération
     const htmlContent = `
       <!DOCTYPE html>
-      <html lang="fr">
+      <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Réinitialisation de mot de passe</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;600&display=swap');
-          
-          * { box-sizing: border-box; }
-          
-          .email-container {
-            max-width: 600px;
-            margin: 0 auto;
-            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            line-height: 1.6;
-            color: #2c3e50;
-            background-color: #f9fbf7;
-          }
-          
-          .email-hero {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 50%, #d63031 100%);
-            color: white;
-            padding: 48px 32px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-          }
-          
-          .email-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-              radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 80% 70%, rgba(255, 107, 107, 0.15) 0%, transparent 50%);
-            pointer-events: none;
-          }
-          
-          .email-logo {
-            font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 32px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-            letter-spacing: -0.5px;
-            position: relative;
-            z-index: 1;
-          }
-          
-          .email-tagline {
-            font-size: 16px;
-            margin: 0;
-            opacity: 0.9;
-            font-weight: 400;
-            position: relative;
-            z-index: 1;
-          }
-          
-          .email-content {
-            background: white;
-            padding: 40px 32px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-          }
-          
-          .security-badge {
-            display: inline-flex;
-            align-items: center;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-          }
-          
-          .security-icon {
-            width: 20px;
-            height: 20px;
-            margin-right: 8px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ff6b6b;
-            font-size: 12px;
-            font-weight: bold;
-          }
-          
-          .greeting {
-            font-size: 18px;
-            margin-bottom: 16px;
-            color: #2c3e50;
-          }
-          
-          .intro-text {
-            font-size: 16px;
-            margin-bottom: 32px;
-            color: #546e7a;
-          }
-          
-          .reset-button-container {
-            text-align: center;
-            margin: 40px 0;
-            padding: 24px;
-            background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
-            border-radius: 16px;
-            border: 1px solid #ffcdd2;
-          }
-          
-          .reset-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-            color: white;
-            padding: 16px 32px;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-          }
-          
-          .reset-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            transition: transform 0.6s;
-            transform: skewX(-15deg);
-          }
-          
-          .reset-button:hover::before {
-            transform: translateX(100%) skewX(-15deg);
-          }
-          
-          .button-icon {
-            margin-right: 8px;
-          }
-          
-          .warning-card {
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border: 1px solid #ffc107;
-            border-left: 4px solid #ff9800;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 24px 0;
-          }
-          
-          .warning-title {
-            font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 18px;
-            font-weight: 600;
-            color: #856404;
-            margin: 0 0 12px 0;
-            display: flex;
-            align-items: center;
-          }
-          
-          .warning-icon {
-            margin-right: 8px;
-            font-size: 20px;
-          }
-          
-          .warning-list {
-            margin: 12px 0 0 0;
-            padding-left: 20px;
-            color: #856404;
-          }
-          
-          .warning-list li {
-            margin-bottom: 8px;
-            font-weight: 500;
-          }
-          
-          .alt-link-card {
-            background: white;
-            border: 1px solid #e8f5e8;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
-          }
-          
-          .alt-link-title {
-            font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 16px;
-            color: #1a4d2f;
-            margin: 0 0 12px 0;
-            display: flex;
-            align-items: center;
-          }
-          
-          .alt-link-text {
-            color: #546e7a;
-            margin-bottom: 12px;
-          }
-          
-          .alt-link {
-            word-break: break-all;
-            color: #ff6b6b;
-            font-family: 'Monaco', 'Menlo', monospace;
-            background: #f8f9fa;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            border: 1px solid #e9ecef;
-          }
-          
-          .support-section {
-            border-top: 2px solid #f1f8e9;
-            padding-top: 24px;
-            margin-top: 32px;
-            text-align: center;
-          }
-          
-          .support-title {
-            font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 18px;
-            color: #1a4d2f;
-            margin-bottom: 12px;
-          }
-          
-          .support-text {
-            color: #546e7a;
-            margin-bottom: 16px;
-          }
-          
-          .support-email {
-            display: inline-flex;
-            align-items: center;
-            background: #2e7d32;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-          }
-          
-          .email-footer {
-            background: #1a4d2f;
-            color: rgba(255, 255, 255, 0.8);
-            padding: 32px;
-            text-align: center;
-            border-radius: 0 0 16px 16px;
-          }
-          
-          .footer-logo {
-            font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 20px;
-            color: white;
-            margin-bottom: 8px;
-          }
-          
-          .footer-text {
-            font-size: 14px;
-            margin: 4px 0;
-            opacity: 0.8;
-          }
-          
-          @media (max-width: 600px) {
-            .email-hero { padding: 32px 20px; }
-            .email-content { padding: 24px 20px; }
-            .reset-button-container { padding: 16px; margin: 24px 0; }
-            .reset-button { padding: 14px 24px; font-size: 14px; }
-          }
-        </style>
       </head>
-      <body>
-        <div class="email-container">
-          <!-- Hero Section -->
-          <div class="email-hero">
-            <h1 class="email-logo">🔐 Mon Savon Vert</h1>
-            <p class="email-tagline">Réinitialisation de mot de passe</p>
-          </div>
-          
-          <!-- Contenu Principal -->
-          <div class="email-content">
-            <!-- Badge de sécurité -->
-            <div class="security-badge">
-              <div class="security-icon">🔑</div>
-              Demande de réinitialisation
-            </div>
-            
-            <!-- Salutation -->
-            <p class="greeting">Bonjour,</p>
-            
-            <p class="intro-text">
-              Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>${user.email}</strong>. 
-              Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe sécurisé.
-            </p>
-            
-            <!-- Bouton de réinitialisation -->
-            <div class="reset-button-container">
-              <a href="${resetUrl}" class="reset-button">
-                <span class="button-icon">🔄</span>
-                Réinitialiser mon mot de passe
-              </a>
-            </div>
-            
-            <!-- Avertissements de sécurité -->
-            <div class="warning-card">
-              <h3 class="warning-title">
-                <span class="warning-icon">⚠️</span>
-                Informations importantes
-              </h3>
-              <ul class="warning-list">
-                <li>Ce lien expire dans <strong>1 heure</strong> pour votre sécurité</li>
-                <li>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
-                <li>Ne partagez jamais ce lien avec personne</li>
-              </ul>
-            </div>
-            
-            <!-- Lien alternatif -->
-            <div class="alt-link-card">
-              <h3 class="alt-link-title">
-                💻 Lien alternatif
-              </h3>
-              <p class="alt-link-text">
-                Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :
-              </p>
-              <div class="alt-link">${resetUrl}</div>
-            </div>
-            
-            <!-- Support -->
-            <div class="support-section">
-              <h3 class="support-title">Besoin d'aide ?</h3>
-              <p class="support-text">
-                Si vous rencontrez des difficultés ou avez des questions concernant la sécurité de votre compte, notre équipe support est à votre disposition.
-              </p>
-              <a href="mailto:contact@monsavonvert.com" class="support-email">
-                📧 Contacter le support
-              </a>
-            </div>
-          </div>
-          
-          <!-- Footer -->
-          <div class="email-footer">
-            <div class="footer-logo">Mon Savon Vert</div>
-            <p class="footer-text">Savons naturels et écologiques</p>
-            <p class="footer-text">Cet email a été envoyé automatiquement, merci de ne pas y répondre</p>
-          </div>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #FF6B6B, #ee5a52); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+          <h1 style="margin: 0; font-size: 28px;">🔐 Mon Savon Vert</h1>
+          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Réinitialisation de mot de passe</p>
         </div>
+        
+        <!-- Contenu principal -->
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #ddd; border-top: none;">
+          
+          <h2 style="color: #FF6B6B; margin-top: 0;">🔑 Réinitialisation demandée</h2>
+          
+          <p>Bonjour,</p>
+          
+          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>${user.email}</strong>.</p>
+          
+          <!-- Bouton de réinitialisation -->
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="display: inline-block; 
+                      background: #FF6B6B; 
+                      color: white; 
+                      padding: 15px 30px; 
+                      text-decoration: none; 
+                      border-radius: 8px; 
+                      font-weight: bold; 
+                      font-size: 16px;">
+              🔄 Réinitialiser mon mot de passe
+            </a>
+          </div>
+          
+          <!-- Informations importantes -->
+          <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+            <h3 style="margin-top: 0; color: #856404;">⚠️ Important</h3>
+            <ul style="margin: 0; padding-left: 20px;">
+              <li>Ce lien expire dans <strong>1 heure</strong></li>
+              <li>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
+              <li>Ne partagez jamais ce lien avec personne</li>
+            </ul>
+          </div>
+          
+          <!-- Lien alternatif -->
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #333;">💻 Lien alternatif</h3>
+            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
+            <p style="word-break: break-all; color: #FF6B6B; font-family: monospace; background: white; padding: 10px; border-radius: 4px;">
+              ${resetUrl}
+            </p>
+          </div>
+          
+          <!-- Support -->
+          <div style="border-top: 2px solid #FF6B6B; padding-top: 20px; margin-top: 30px;">
+            <h3 style="color: #333;">💬 Besoin d'aide ?</h3>
+            <p>Si vous rencontrez des difficultés, contactez notre support :</p>
+            <p>📧 Email : <a href="mailto:contact@monsavonvert.com" style="color: #FF6B6B;">contact@monsavonvert.com</a></p>
+          </div>
+          
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px;">
+          <p style="margin: 0;">Mon Savon Vert - Savons naturels et écologiques 🌱</p>
+          <p style="margin: 5px 0 0 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre</p>
+        </div>
+        
       </body>
       </html>
     `;
