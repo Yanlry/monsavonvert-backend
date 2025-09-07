@@ -365,7 +365,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     }
     
     // URL de réinitialisation (adaptez selon votre frontend)
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://monsavonvert.com'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://monsavonvert.com'}/reset-password/${resetToken}`;
     
     console.log('🔐 URL de reset générée:', resetUrl);
     
