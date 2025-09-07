@@ -1,6 +1,6 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet - VERSION CORRIGÉE
-// INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
+// Migration complète vers Mailjet - VERSION PREMIUM
+// Templates email redesignés avec direction artistique sophistiquée
 
 const Mailjet = require('node-mailjet');
 
@@ -56,7 +56,7 @@ const sendEmailViaMailjet = async ({ to, subject, htmlContent, textContent, from
         {
           From: {
             Email: process.env.MAILJET_FROM_EMAIL || 'contact@monsavonvert.com',
-            Name: fromName || process.env.MAILJET_FROM_NAME || 'Mon Savon Vert'
+            Name: fromName || process.env.MAILJET_FROM_NAME || 'MonSavonVert'
           },
           To: [
             {
@@ -126,7 +126,7 @@ const testMailjetConnection = async () => {
         {
           From: {
             Email: process.env.MAILJET_FROM_EMAIL || 'contact@monsavonvert.com',
-            Name: process.env.MAILJET_FROM_NAME || 'Mon Savon Vert'
+            Name: process.env.MAILJET_FROM_NAME || 'MonSavonVert'
           },
           To: [
             {
@@ -167,7 +167,7 @@ const testMailjetConnection = async () => {
 
 /**
  * Fonction pour envoyer l'email de confirmation de commande
- * GARDÉE IDENTIQUE - seule la méthode d'envoi change
+ * TEMPLATE REDESIGNÉ - Direction artistique premium
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
@@ -185,24 +185,33 @@ const sendOrderConfirmation = async (customer, order) => {
       throw new Error('❌ Données de commande manquantes');
     }
     
-    // Construction de la liste des produits
+    // Construction de la liste des produits avec design premium
     let productsList = '';
     if (order.products && order.products.length > 0) {
       productsList = order.products.map(product => {
         const productName = product.name || 'Produit sans nom';
-        const productPrice = product.price ? `${product.price.toFixed(2)}€` : 'Prix non disponible';
+        const productPrice = product.price ? `${product.price.toFixed(2)} €` : 'Prix non disponible';
         const productQuantity = product.quantity || 1;
         
         return `
-          <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-              <strong>${productName}</strong>
+          <tr style="border-bottom: 1px solid #f1f8e9;">
+            <td style="padding: 20px 16px; vertical-align: top;">
+              <div style="font-weight: 600; color: #2c3e50; font-size: 16px; margin-bottom: 4px;">
+                ${productName}
+              </div>
+              <div style="color: #546e7a; font-size: 14px;">
+                Cosmétique naturel artisanal
+              </div>
             </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
-              ${productQuantity}
+            <td style="padding: 20px 16px; text-align: center; vertical-align: middle;">
+              <span style="background: #f1f8e9; color: #2e7d32; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 14px;">
+                ${productQuantity}
+              </span>
             </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
-              ${productPrice}
+            <td style="padding: 20px 16px; text-align: right; vertical-align: middle;">
+              <div style="font-weight: 700; color: #2e7d32; font-size: 16px;">
+                ${productPrice}
+              </div>
             </td>
           </tr>
         `;
@@ -210,126 +219,346 @@ const sendOrderConfirmation = async (customer, order) => {
     } else {
       productsList = `
         <tr>
-          <td colspan="3" style="padding: 20px; text-align: center; color: #666;">
+          <td colspan="3" style="padding: 40px 20px; text-align: center; color: #546e7a; font-style: italic;">
             Aucun produit trouvé dans cette commande
           </td>
         </tr>
       `;
     }
     
-    // Template HTML pour l'email de confirmation (gardé identique)
+    // Template HTML premium redesigné
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="fr">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Confirmation de commande</title>
+        <title>Confirmation de commande - MonSavonVert</title>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+        <!--[if mso]>
+        <style type="text/css">
+          .fallback-font { font-family: Arial, sans-serif !important; }
+        </style>
+        <![endif]-->
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <body style="margin: 0; padding: 0; background-color: #f9fbf7; font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #2c3e50;">
         
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🧼 Mon Savon Vert</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Savons naturels et écologiques</p>
-        </div>
-        
-        <!-- Contenu principal -->
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #ddd; border-top: none;">
-          
-          <h2 style="color: #4CAF50; margin-top: 0;">✅ Commande confirmée !</h2>
-          
-          <p>Bonjour <strong>${customer.firstName || customer.email}</strong>,</p>
-          
-          <p>Nous avons bien reçu votre commande et nous vous remercions pour votre confiance ! 🌿</p>
-          
-          <!-- Détails de la commande -->
-          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">📋 Détails de votre commande</h3>
-            <p><strong>Numéro de commande :</strong> ${order.orderNumber}</p>
-            <p><strong>Date :</strong> ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}</p>
-            <p><strong>Email :</strong> ${customer.email}</p>
-          </div>
-          
-          <!-- Liste des produits -->
-          <h3 style="color: #333;">🛒 Vos produits</h3>
-          <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
-            <thead>
-              <tr style="background: #4CAF50; color: white;">
-                <th style="padding: 12px; text-align: left;">Produit</th>
-                <th style="padding: 12px; text-align: center;">Quantité</th>
-                <th style="padding: 12px; text-align: right;">Prix</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${productsList}
-            </tbody>
-          </table>
-          
-          <!-- Total -->
-          <div style="text-align: right; margin: 20px 0; padding: 15px; background: #f0f8f0; border-radius: 8px;">
-            <h3 style="margin: 0; color: #4CAF50; font-size: 20px;">
-              💰 Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
-            </h3>
-          </div>
-          
-          <!-- Informations de livraison -->
-          <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">🚚 Livraison</h3>
-            <p>Votre commande sera expédiée sous 24-48h ouvrées.</p>
-            <p>Vous recevrez un email de confirmation d'expédition avec le numéro de suivi.</p>
-          </div>
-          
-          <!-- Support -->
-          <div style="border-top: 2px solid #4CAF50; padding-top: 20px; margin-top: 30px;">
-            <h3 style="color: #333;">💬 Besoin d'aide ?</h3>
-            <p>Notre équipe est là pour vous aider !</p>
-            <p>📧 Email : <a href="mailto:contact@monsavonvert.com" style="color: #4CAF50;">contact@monsavonvert.com</a></p>
-          </div>
-          
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px;">
-          <p style="margin: 0;">Merci de faire confiance à Mon Savon Vert ! 🌱</p>
-          <p style="margin: 5px 0 0 0;">Des savons naturels pour prendre soin de vous et de la planète</p>
-        </div>
+        <!-- Container principal -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9fbf7;">
+          <tr>
+            <td style="padding: 40px 20px;">
+              
+              <!-- Carte email -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); overflow: hidden;">
+                
+                <!-- Header avec dégradé -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #1a4d2f 0%, #2e7d32 100%); padding: 0; position: relative;">
+                    
+                    <!-- Motif décoratif -->
+                    <div style="position: absolute; top: 0; right: 0; width: 120px; height: 120px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); border-radius: 50%; transform: translate(40px, -40px);"></div>
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 48px 40px; text-align: center; position: relative; z-index: 2;">
+                          
+                          <!-- Logo -->
+                          <h1 style="margin: 0 0 12px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 36px; font-weight: 700; color: #ffffff; letter-spacing: -1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            MonSavonVert
+                          </h1>
+                          
+                          <!-- Tagline -->
+                          <p style="margin: 0; font-size: 16px; color: rgba(255, 255, 255, 0.9); font-weight: 400;">
+                            Cosmétiques naturels & artisanaux
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Contenu principal -->
+                <tr>
+                  <td style="padding: 48px 40px;">
+                    
+                    <!-- Titre de confirmation -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="text-align: center; padding-bottom: 32px;">
+                          
+                          <!-- Icône de succès -->
+                          <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, #4caf50, #2e7d32); border-radius: 50%; margin-bottom: 24px; position: relative;">
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 28px; height: 28px;">
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20,6 9,17 4,12"></polyline>
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          <h2 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 32px; font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">
+                            Commande confirmée
+                          </h2>
+                          
+                          <p style="margin: 0; font-size: 18px; color: #546e7a; line-height: 1.5;">
+                            Merci pour votre confiance, <strong style="color: #2e7d32;">${customer.firstName || customer.email}</strong>
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Message personnel -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 24px 0;">
+                          <p style="margin: 0; font-size: 16px; color: #2c3e50; line-height: 1.6; text-align: center;">
+                            Votre commande a été reçue et est en cours de préparation. Nous mettons tout notre savoir-faire artisanal au service de votre bien-être naturel.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Détails de la commande -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #f9fbf7; border-radius: 12px; margin: 32px 0;">
+                      <tr>
+                        <td style="padding: 24px;">
+                          
+                          <h3 style="margin: 0 0 20px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 600; color: #2e7d32; border-bottom: 2px solid #e8f5e8; padding-bottom: 12px;">
+                            Récapitulatif de commande
+                          </h3>
+                          
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <strong style="color: #2c3e50;">Numéro de commande :</strong>
+                              </td>
+                              <td style="padding: 8px 0; text-align: right; font-family: 'Courier New', monospace; color: #2e7d32; font-weight: 600;">
+                                ${order.orderNumber}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <strong style="color: #2c3e50;">Date de commande :</strong>
+                              </td>
+                              <td style="padding: 8px 0; text-align: right; color: #546e7a;">
+                                ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 8px 0;">
+                                <strong style="color: #2c3e50;">Email de contact :</strong>
+                              </td>
+                              <td style="padding: 8px 0; text-align: right; color: #546e7a;">
+                                ${customer.email}
+                              </td>
+                            </tr>
+                          </table>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Liste des produits -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 32px 0;">
+                      <tr>
+                        <td>
+                          
+                          <h3 style="margin: 0 0 24px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 600; color: #2e7d32;">
+                            Vos produits sélectionnés
+                          </h3>
+                          
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-radius: 12px; overflow: hidden; border: 1px solid #e8f5e8;">
+                            
+                            <!-- En-tête du tableau -->
+                            <tr style="background: linear-gradient(135deg, #2e7d32, #4caf50);">
+                              <th style="padding: 16px; text-align: left; color: #ffffff; font-weight: 600; font-size: 14px; letter-spacing: 0.5px;">
+                                PRODUIT
+                              </th>
+                              <th style="padding: 16px; text-align: center; color: #ffffff; font-weight: 600; font-size: 14px; letter-spacing: 0.5px;">
+                                QTÉ
+                              </th>
+                              <th style="padding: 16px; text-align: right; color: #ffffff; font-weight: 600; font-size: 14px; letter-spacing: 0.5px;">
+                                PRIX
+                              </th>
+                            </tr>
+                            
+                            <!-- Produits -->
+                            ${productsList}
+                            
+                          </table>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Total -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #f1f8e9, #e8f5e8); border-radius: 12px; margin: 32px 0;">
+                      <tr>
+                        <td style="padding: 24px; text-align: center;">
+                          
+                          <div style="margin-bottom: 8px;">
+                            <span style="font-size: 16px; color: #546e7a; font-weight: 500;">Total de votre commande</span>
+                          </div>
+                          
+                          <div style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 36px; font-weight: 700; color: #2e7d32; letter-spacing: -1px;">
+                            ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'} €
+                          </div>
+                          
+                          <div style="margin-top: 8px;">
+                            <span style="font-size: 14px; color: #546e7a;">TTC, livraison incluse</span>
+                          </div>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Informations de livraison -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #ffffff; border: 1px solid #e8f5e8; border-radius: 12px; margin: 32px 0;">
+                      <tr>
+                        <td style="padding: 24px;">
+                          
+                          <h3 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; color: #2e7d32; display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2e7d32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                              <rect x="1" y="3" width="15" height="13"></rect>
+                              <polygon points="16,3 21,8 21,16 16,16"></polygon>
+                              <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                              <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                            </svg>
+                            Livraison & Expédition
+                          </h3>
+                          
+                          <div style="background: #f9fbf7; padding: 16px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <p style="margin: 0 0 12px 0; font-size: 16px; color: #2c3e50; font-weight: 600;">
+                              Préparation sous 24-48h ouvrées
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #546e7a; line-height: 1.5;">
+                              Votre commande sera soigneusement préparée par nos artisans. Vous recevrez un email de confirmation d'expédition avec le numéro de suivi dès l'envoi de votre colis.
+                            </p>
+                          </div>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+                <!-- Section support -->
+                <tr>
+                  <td style="background: #f8f9fa; padding: 32px 40px; border-top: 1px solid #e8f5e8;">
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="text-align: center;">
+                          
+                          <h3 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; color: #2c3e50;">
+                            Une question ? Notre équipe vous accompagne
+                          </h3>
+                          
+                          <p style="margin: 0 0 20px 0; font-size: 15px; color: #546e7a; line-height: 1.5;">
+                            Notre service client est à votre disposition pour toute question concernant votre commande.
+                          </p>
+                          
+                          <a href="mailto:contact@monsavonvert.com" style="display: inline-block; background: linear-gradient(135deg, #2e7d32, #4caf50); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 25px; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; transition: all 0.3s ease;">
+                            Nous contacter
+                          </a>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background: #2c3e50; padding: 32px 40px; text-align: center;">
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td>
+                          
+                          <p style="margin: 0 0 12px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 600; color: #ffffff;">
+                            MonSavonVert
+                          </p>
+                          
+                          <p style="margin: 0; font-size: 14px; color: rgba(255, 255, 255, 0.7); line-height: 1.5;">
+                            Cosmétiques naturels & artisanaux<br>
+                            Prendre soin de vous et de la planète
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+              </table>
+              
+            </td>
+          </tr>
+        </table>
         
       </body>
       </html>
     `;
     
-    // Version texte de l'email
+    // Version texte élégante
     const textContent = `
-      MON SAVON VERT - Confirmation de commande
-      
-      Bonjour ${customer.firstName || customer.email},
-      
-      Nous avons bien reçu votre commande et nous vous remercions !
-      
-      DÉTAILS DE VOTRE COMMANDE :
-      - Numéro : ${order.orderNumber}
-      - Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}
-      - Email : ${customer.email}
-      - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
-      
-      Votre commande sera expédiée sous 24-48h ouvrées.
-      
-      Besoin d'aide ? Contactez-nous : contact@monsavonvert.com
-      
-      Merci de votre confiance !
-      L'équipe Mon Savon Vert
+MONSAVONVERT - CONFIRMATION DE COMMANDE
+
+Bonjour ${customer.firstName || customer.email},
+
+Votre commande a été confirmée avec succès.
+
+═══════════════════════════════════════════
+RÉCAPITULATIF DE COMMANDE
+═══════════════════════════════════════════
+
+Numéro de commande : ${order.orderNumber}
+Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}
+Email : ${customer.email}
+
+MONTANT TOTAL : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'} € TTC
+
+═══════════════════════════════════════════
+LIVRAISON & EXPÉDITION
+═══════════════════════════════════════════
+
+Votre commande sera préparée sous 24-48h ouvrées.
+Vous recevrez un email de confirmation d'expédition avec le numéro de suivi.
+
+═══════════════════════════════════════════
+BESOIN D'AIDE ?
+═══════════════════════════════════════════
+
+Notre équipe est à votre disposition :
+Email : contact@monsavonvert.com
+
+Merci pour votre confiance,
+L'équipe MonSavonVert
+
+---
+MonSavonVert - Cosmétiques naturels & artisanaux
+Prendre soin de vous et de la planète
     `;
     
-    console.log('💼 Template email préparé');
+    console.log('💼 Template email premium préparé');
     
     // Envoi via Mailjet
     const result = await sendEmailViaMailjet({
       to: customer.email,
-      subject: `✅ Commande confirmée #${order.orderNumber} - Mon Savon Vert`,
+      subject: `Commande confirmée #${order.orderNumber} - MonSavonVert`,
       htmlContent: htmlContent,
       textContent: textContent,
-      fromName: 'Mon Savon Vert - Confirmations'
+      fromName: 'MonSavonVert'
     });
     
     console.log('💼 === EMAIL COMMANDE ENVOYÉ ===\n');
@@ -347,7 +576,7 @@ const sendOrderConfirmation = async (customer, order) => {
 
 /**
  * Fonction pour envoyer l'email de récupération de mot de passe
- * GARDÉE IDENTIQUE - seule la méthode d'envoi change
+ * TEMPLATE REDESIGNÉ - Direction artistique premium
  */
 const sendPasswordResetEmail = async (user, resetToken) => {
   try {
@@ -364,120 +593,274 @@ const sendPasswordResetEmail = async (user, resetToken) => {
       throw new Error('❌ Token de réinitialisation manquant');
     }
     
-    // URL de réinitialisation (adaptez selon votre frontend)
+    // URL de réinitialisation
     const resetUrl = `${process.env.FRONTEND_URL || 'https://monsavonvert.com'}/reset-password/${resetToken}`;
     
     console.log('🔐 URL de reset générée:', resetUrl);
     
-    // Template HTML pour l'email de récupération
+    // Template HTML premium pour reset password
     const htmlContent = `
       <!DOCTYPE html>
-      <html>
+      <html lang="fr">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Réinitialisation de mot de passe</title>
+        <title>Réinitialisation de mot de passe - MonSavonVert</title>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <body style="margin: 0; padding: 0; background-color: #f9fbf7; font-family: 'Montserrat', Arial, sans-serif; line-height: 1.6; color: #2c3e50;">
         
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #FF6B6B, #ee5a52); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🔐 Mon Savon Vert</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Réinitialisation de mot de passe</p>
-        </div>
-        
-        <!-- Contenu principal -->
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #ddd; border-top: none;">
-          
-          <h2 style="color: #FF6B6B; margin-top: 0;">🔑 Réinitialisation demandée</h2>
-          
-          <p>Bonjour,</p>
-          
-          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>${user.email}</strong>.</p>
-          
-          <!-- Bouton de réinitialisation -->
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="display: inline-block; 
-                      background: #FF6B6B; 
-                      color: white; 
-                      padding: 15px 30px; 
-                      text-decoration: none; 
-                      border-radius: 8px; 
-                      font-weight: bold; 
-                      font-size: 16px;">
-              🔄 Réinitialiser mon mot de passe
-            </a>
-          </div>
-          
-          <!-- Informations importantes -->
-          <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <h3 style="margin-top: 0; color: #856404;">⚠️ Important</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li>Ce lien expire dans <strong>1 heure</strong></li>
-              <li>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
-              <li>Ne partagez jamais ce lien avec personne</li>
-            </ul>
-          </div>
-          
-          <!-- Lien alternatif -->
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">💻 Lien alternatif</h3>
-            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
-            <p style="word-break: break-all; color: #FF6B6B; font-family: monospace; background: white; padding: 10px; border-radius: 4px;">
-              ${resetUrl}
-            </p>
-          </div>
-          
-          <!-- Support -->
-          <div style="border-top: 2px solid #FF6B6B; padding-top: 20px; margin-top: 30px;">
-            <h3 style="color: #333;">💬 Besoin d'aide ?</h3>
-            <p>Si vous rencontrez des difficultés, contactez notre support :</p>
-            <p>📧 Email : <a href="mailto:contact@monsavonvert.com" style="color: #FF6B6B;">contact@monsavonvert.com</a></p>
-          </div>
-          
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px;">
-          <p style="margin: 0;">Mon Savon Vert - Savons naturels et écologiques 🌱</p>
-          <p style="margin: 5px 0 0 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre</p>
-        </div>
+        <!-- Container principal -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f9fbf7;">
+          <tr>
+            <td style="padding: 40px 20px;">
+              
+              <!-- Carte email -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); overflow: hidden;">
+                
+                <!-- Header sécurisé -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #e65100 0%, #ff9800 100%); padding: 0; position: relative;">
+                    
+                    <!-- Motif décoratif -->
+                    <div style="position: absolute; top: 0; right: 0; width: 120px; height: 120px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%); border-radius: 50%; transform: translate(40px, -40px);"></div>
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 48px 40px; text-align: center; position: relative; z-index: 2;">
+                          
+                          <!-- Logo -->
+                          <h1 style="margin: 0 0 12px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 36px; font-weight: 700; color: #ffffff; letter-spacing: -1px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            MonSavonVert
+                          </h1>
+                          
+                          <!-- Tagline sécurité -->
+                          <p style="margin: 0; font-size: 16px; color: rgba(255, 255, 255, 0.9); font-weight: 400;">
+                            Réinitialisation sécurisée
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Contenu principal -->
+                <tr>
+                  <td style="padding: 48px 40px;">
+                    
+                    <!-- Titre et icône -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="text-align: center; padding-bottom: 32px;">
+                          
+                          <!-- Icône de sécurité -->
+                          <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, #ff9800, #e65100); border-radius: 50%; margin-bottom: 24px; position: relative;">
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 28px; height: 28px;">
+                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          <h2 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; font-weight: 700; color: #2c3e50; letter-spacing: -0.5px;">
+                            Réinitialisation de mot de passe
+                          </h2>
+                          
+                          <p style="margin: 0; font-size: 16px; color: #546e7a; line-height: 1.5;">
+                            Une demande de réinitialisation a été effectuée pour votre compte
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Message personnel -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 24px 0;">
+                          
+                          <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; border-left: 4px solid #ff9800; margin-bottom: 24px;">
+                            <p style="margin: 0; font-size: 16px; color: #2c3e50; line-height: 1.6;">
+                              Bonjour,<br><br>
+                              Vous avez demandé la réinitialisation de votre mot de passe pour le compte associé à l'adresse <strong style="color: #e65100;">${user.email}</strong>.
+                            </p>
+                          </div>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Bouton d'action principal -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="text-align: center; padding: 32px 0;">
+                          
+                          <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #e65100, #ff9800); color: #ffffff; text-decoration: none; padding: 18px 36px; border-radius: 30px; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; box-shadow: 0 8px 24px rgba(230, 81, 0, 0.3); transition: all 0.3s ease;">
+                            Réinitialiser mon mot de passe
+                          </a>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Instructions importantes -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #fff3e0; border: 1px solid #ffcc02; border-radius: 12px; margin: 32px 0;">
+                      <tr>
+                        <td style="padding: 24px;">
+                          
+                          <h3 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 600; color: #e65100; display: flex; align-items: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e65100" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            Informations importantes
+                          </h3>
+                          
+                          <ul style="margin: 0; padding-left: 20px; color: #2c3e50; font-size: 14px; line-height: 1.6;">
+                            <li style="margin-bottom: 8px;">Ce lien de réinitialisation expire automatiquement dans <strong>10 minutes</strong></li>
+                            <li style="margin-bottom: 8px;">Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
+                            <li style="margin-bottom: 8px;">Ne partagez jamais ce lien avec une tierce personne</li>
+                            <li>Votre mot de passe actuel reste inchangé tant que vous n'en créez pas un nouveau</li>
+                          </ul>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Lien alternatif -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #f8f9fa; border-radius: 12px; margin: 24px 0;">
+                      <tr>
+                        <td style="padding: 20px;">
+                          
+                          <h4 style="margin: 0 0 12px 0; font-weight: 600; color: #2c3e50; font-size: 16px;">
+                            Le bouton ne fonctionne pas ?
+                          </h4>
+                          
+                          <p style="margin: 0 0 12px 0; font-size: 14px; color: #546e7a;">
+                            Copiez et collez ce lien dans votre navigateur :
+                          </p>
+                          
+                          <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e8f5e8; word-break: break-all; font-family: 'Courier New', monospace; font-size: 13px; color: #e65100;">
+                            ${resetUrl}
+                          </div>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+                <!-- Section support -->
+                <tr>
+                  <td style="background: #f8f9fa; padding: 32px 40px; border-top: 1px solid #e8f5e8;">
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="text-align: center;">
+                          
+                          <h3 style="margin: 0 0 16px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; color: #2c3e50;">
+                            Besoin d'assistance ?
+                          </h3>
+                          
+                          <p style="margin: 0 0 20px 0; font-size: 15px; color: #546e7a; line-height: 1.5;">
+                            Si vous rencontrez des difficultés, notre équipe technique est à votre disposition.
+                          </p>
+                          
+                          <a href="mailto:contact@monsavonvert.com" style="display: inline-block; background: #2c3e50; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 20px; font-weight: 600; font-size: 14px; letter-spacing: 0.5px;">
+                            Contacter le support
+                          </a>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background: #2c3e50; padding: 32px 40px; text-align: center;">
+                    
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td>
+                          
+                          <p style="margin: 0 0 8px 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px; font-weight: 600; color: #ffffff;">
+                            MonSavonVert
+                          </p>
+                          
+                          <p style="margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.6); line-height: 1.4;">
+                            Cet email a été envoyé automatiquement.<br>
+                            Merci de ne pas y répondre directement.
+                          </p>
+                          
+                        </td>
+                      </tr>
+                    </table>
+                    
+                  </td>
+                </tr>
+                
+              </table>
+              
+            </td>
+          </tr>
+        </table>
         
       </body>
       </html>
     `;
     
-    // Version texte de l'email
+    // Version texte élégante
     const textContent = `
-      MON SAVON VERT - Réinitialisation de mot de passe
-      
-      Bonjour,
-      
-      Vous avez demandé la réinitialisation de votre mot de passe pour : ${user.email}
-      
-      Pour créer un nouveau mot de passe, cliquez sur ce lien :
-      ${resetUrl}
-      
-      IMPORTANT :
-      - Ce lien expire dans 1 heure
-      - Si vous n'avez pas demandé cette réinitialisation, ignorez cet email
-      - Ne partagez jamais ce lien
-      
-      Besoin d'aide ? Contactez-nous : contact@monsavonvert.com
-      
-      L'équipe Mon Savon Vert
+MONSAVONVERT - RÉINITIALISATION DE MOT DE PASSE
+
+Bonjour,
+
+Une demande de réinitialisation de mot de passe a été effectuée pour votre compte : ${user.email}
+
+═══════════════════════════════════════════
+LIEN DE RÉINITIALISATION
+═══════════════════════════════════════════
+
+Cliquez sur ce lien pour créer votre nouveau mot de passe :
+${resetUrl}
+
+═══════════════════════════════════════════
+INFORMATIONS IMPORTANTES
+═══════════════════════════════════════════
+
+• Ce lien expire automatiquement dans 10 minutes
+• Si vous n'avez pas demandé cette réinitialisation, ignorez cet email
+• Ne partagez jamais ce lien avec une tierce personne
+• Votre mot de passe actuel reste inchangé tant que vous n'en créez pas un nouveau
+
+═══════════════════════════════════════════
+BESOIN D'AIDE ?
+═══════════════════════════════════════════
+
+Si vous rencontrez des difficultés :
+Email : contact@monsavonvert.com
+
+Cordialement,
+L'équipe MonSavonVert
+
+---
+Cet email a été envoyé automatiquement.
+Merci de ne pas y répondre directement.
     `;
     
-    console.log('🔐 Template email reset préparé');
+    console.log('🔐 Template email reset premium préparé');
     
     // Envoi via Mailjet
     const result = await sendEmailViaMailjet({
       to: user.email,
-      subject: '🔐 Réinitialisation de votre mot de passe - Mon Savon Vert',
+      subject: 'Réinitialisation de votre mot de passe - MonSavonVert',
       htmlContent: htmlContent,
       textContent: textContent,
-      fromName: 'Mon Savon Vert - Support'
+      fromName: 'MonSavonVert - Support'
     });
     
     console.log('🔐 === EMAIL RESET PASSWORD ENVOYÉ ===\n');
