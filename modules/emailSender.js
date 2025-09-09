@@ -458,7 +458,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
           <!-- BANNIÈRE SUPÉRIEURE -->
           <div style="width: 100%; background-color: #1b5e20; padding: 40px 0; text-align: center;">
             <h1 style="margin: 0; color: white; font-size: 36px; font-weight: bold; letter-spacing: 2px;">
-              🧼 MON SAVON VERT
+              MON SAVON VERT
             </h1>
             <p style="margin: 10px 0 0 0; color: #a5d6a7; font-size: 16px; font-weight: 300;">
               Réinitialisation de mot de passe
@@ -471,7 +471,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
             <!-- Titre de réinitialisation -->
             <div style="text-align: center; margin-bottom: 40px;">
               <h2 style="color: #1b5e20; margin: 0; font-size: 28px; font-weight: bold;">
-                🔑 Réinitialisation demandée
+                Réinitialisation demandée
               </h2>
               <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">
                 Suivez les étapes ci-dessous pour créer un nouveau mot de passe
@@ -512,25 +512,10 @@ const sendPasswordResetEmail = async (user, resetToken) => {
                 ⚠️ Informations importantes
               </h3>
               <div style="color: #856404; line-height: 1.8;">
-                <p style="margin: 0 0 15px 0;">🕐 <strong>Durée de validité :</strong> Ce lien expire dans exactement 1 heure</p>
+                <p style="margin: 0 0 15px 0;">🕐 <strong>Durée de validité :</strong> Ce lien expire dans exactement 10 minutes</p>
                 <p style="margin: 0 0 15px 0;">🔒 <strong>Sécurité :</strong> Ne partagez jamais ce lien avec personne</p>
                 <p style="margin: 0 0 15px 0;">❌ <strong>Demande non autorisée :</strong> Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</p>
                 <p style="margin: 0;">🛡️ <strong>Protection :</strong> Votre compte reste sécurisé tant que vous ne cliquez pas sur le lien</p>
-              </div>
-            </div>
-            
-            <!-- Lien alternatif -->
-            <div style="background: #ffffff; border: 2px solid #1b5e20; border-radius: 15px; padding: 30px; margin-bottom: 35px;">
-              <h3 style="margin: 0 0 20px 0; color: #1b5e20; font-size: 20px; font-weight: bold;">
-                💻 Le bouton ne fonctionne pas ?
-              </h3>
-              <p style="margin: 0 0 15px 0; color: #555;">
-                Copiez et collez ce lien directement dans votre navigateur :
-              </p>
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #1b5e20;">
-                <p style="word-break: break-all; color: #1b5e20; font-family: 'Courier New', monospace; font-size: 14px; margin: 0; line-height: 1.4;">
-                  ${resetUrl}
-                </p>
               </div>
             </div>
             
@@ -557,7 +542,7 @@ const sendPasswordResetEmail = async (user, resetToken) => {
           <!-- BANNIÈRE INFÉRIEURE -->
           <div style="width: 100%; background-color: #1b5e20; padding: 40px 30px; text-align: center;">
             <h4 style="margin: 0 0 15px 0; color: white; font-size: 20px; font-weight: bold;">
-              🔐 Sécurité et confidentialité
+              Sécurité et confidentialité
             </h4>
             <p style="margin: 0 0 20px 0; color: #a5d6a7; font-size: 16px; line-height: 1.6;">
               Votre sécurité est notre priorité. Tous vos données sont protégées et chiffrées.
