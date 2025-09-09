@@ -1,5 +1,5 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet - VERSION CORRIGÉE
+// Migration complète vers Mailjet avec NOUVEAU STYLE PROFESSIONNEL
 // INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
 
 const Mailjet = require('node-mailjet');
@@ -167,7 +167,7 @@ const testMailjetConnection = async () => {
 
 /**
  * Fonction pour envoyer l'email de confirmation de commande
- * GARDÉE IDENTIQUE - seule la méthode d'envoi change
+ * STYLE COMPLETEMENT REFAIT - Logique identique
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
@@ -195,13 +195,13 @@ const sendOrderConfirmation = async (customer, order) => {
         
         return `
           <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;">
-              <strong>${productName}</strong>
+            <td style="padding: 15px; border-bottom: 1px solid #e8e8e8; font-size: 14px; color: #333;">
+              ${productName}
             </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+            <td style="padding: 15px; border-bottom: 1px solid #e8e8e8; text-align: center; font-size: 14px; color: #666;">
               ${productQuantity}
             </td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">
+            <td style="padding: 15px; border-bottom: 1px solid #e8e8e8; text-align: right; font-size: 14px; color: #1b5e20; font-weight: 600;">
               ${productPrice}
             </td>
           </tr>
@@ -210,89 +210,173 @@ const sendOrderConfirmation = async (customer, order) => {
     } else {
       productsList = `
         <tr>
-          <td colspan="3" style="padding: 20px; text-align: center; color: #666;">
+          <td colspan="3" style="padding: 30px; text-align: center; color: #999; font-style: italic;">
             Aucun produit trouvé dans cette commande
           </td>
         </tr>
       `;
     }
     
-    // Template HTML pour l'email de confirmation (gardé identique)
+    // NOUVEAU TEMPLATE HTML PROFESSIONNEL
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Confirmation de commande</title>
+        <title>Confirmation de commande - Mon Savon Vert</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
         
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #4CAF50, #45a049); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🧼 Mon Savon Vert</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Savons naturels et écologiques</p>
+        <!-- BANNIÈRE SUPÉRIEURE -->
+        <div style="width: 100%; background-color: #1b5e20; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 2px;">
+              MON SAVON VERT
+            </h1>
+            <p style="color: #a5d6a7; margin: 10px 0 0 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
+              Savons naturels & écologiques
+            </p>
+          </div>
         </div>
         
-        <!-- Contenu principal -->
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #ddd; border-top: none;">
+        <!-- CONTENU PRINCIPAL -->
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
           
-          <h2 style="color: #4CAF50; margin-top: 0;">✅ Commande confirmée !</h2>
-          
-          <p>Bonjour <strong>${customer.firstName || customer.email}</strong>,</p>
-          
-          <p>Nous avons bien reçu votre commande et nous vous remercions pour votre confiance ! 🌿</p>
-          
-          <!-- Détails de la commande -->
-          <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">📋 Détails de votre commande</h3>
-            <p><strong>Numéro de commande :</strong> ${order.orderNumber}</p>
-            <p><strong>Date :</strong> ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}</p>
-            <p><strong>Email :</strong> ${customer.email}</p>
+          <!-- Message de confirmation -->
+          <div style="padding: 50px 40px 30px 40px;">
+            <div style="text-align: center; margin-bottom: 40px;">
+              <div style="display: inline-block; width: 80px; height: 80px; background-color: #e8f5e9; border-radius: 50%; line-height: 80px; margin-bottom: 20px;">
+                <span style="font-size: 40px;">✓</span>
+              </div>
+              <h2 style="color: #1b5e20; margin: 0 0 10px 0; font-size: 28px; font-weight: 400;">
+                Commande confirmée
+              </h2>
+              <p style="color: #666; margin: 0; font-size: 16px;">
+                Merci pour votre confiance ${customer.firstName || ''}!
+              </p>
+            </div>
+            
+            <!-- Informations de la commande -->
+            <div style="background-color: #fafafa; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="color: #333; margin: 0 0 20px 0; font-size: 18px; font-weight: 500; border-bottom: 2px solid #1b5e20; padding-bottom: 10px;">
+                Détails de la commande
+              </h3>
+              <table style="width: 100%;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Numéro de commande :</td>
+                  <td style="padding: 8px 0; color: #333; font-size: 14px; font-weight: 600; text-align: right;">#${order.orderNumber}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Date :</td>
+                  <td style="padding: 8px 0; color: #333; font-size: 14px; text-align: right;">${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666; font-size: 14px;">Email :</td>
+                  <td style="padding: 8px 0; color: #333; font-size: 14px; text-align: right;">${customer.email}</td>
+                </tr>
+              </table>
+            </div>
+            
+            <!-- Tableau des produits -->
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #333; margin: 0 0 20px 0; font-size: 18px; font-weight: 500;">
+                Récapitulatif des produits
+              </h3>
+              <table style="width: 100%; border-collapse: collapse; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <thead>
+                  <tr style="background-color: #f8f8f8;">
+                    <th style="padding: 15px; text-align: left; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                      Produit
+                    </th>
+                    <th style="padding: 15px; text-align: center; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                      Quantité
+                    </th>
+                    <th style="padding: 15px; text-align: right; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                      Prix
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${productsList}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="2" style="padding: 20px 15px; border-top: 2px solid #1b5e20; text-align: right; font-size: 18px; color: #333; font-weight: 500;">
+                      Total :
+                    </td>
+                    <td style="padding: 20px 15px; border-top: 2px solid #1b5e20; text-align: right; font-size: 20px; color: #1b5e20; font-weight: 700;">
+                      ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            <!-- Informations de livraison -->
+            <div style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-radius: 8px; padding: 25px; margin-bottom: 30px; border-left: 4px solid #1b5e20;">
+              <h3 style="color: #1b5e20; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">
+                📦 Informations de livraison
+              </h3>
+              <p style="color: #555; margin: 0 0 10px 0; font-size: 14px; line-height: 1.6;">
+                Votre commande sera préparée avec soin et expédiée sous <strong>24-48h ouvrées</strong>.
+              </p>
+              <p style="color: #555; margin: 0; font-size: 14px; line-height: 1.6;">
+                Un email de confirmation avec le numéro de suivi vous sera envoyé dès l'expédition.
+              </p>
+            </div>
+            
           </div>
-          
-          <!-- Liste des produits -->
-          <h3 style="color: #333;">🛒 Vos produits</h3>
-          <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
-            <thead>
-              <tr style="background: #4CAF50; color: white;">
-                <th style="padding: 12px; text-align: left;">Produit</th>
-                <th style="padding: 12px; text-align: center;">Quantité</th>
-                <th style="padding: 12px; text-align: right;">Prix</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${productsList}
-            </tbody>
-          </table>
-          
-          <!-- Total -->
-          <div style="text-align: right; margin: 20px 0; padding: 15px; background: #f0f8f0; border-radius: 8px;">
-            <h3 style="margin: 0; color: #4CAF50; font-size: 20px;">
-              💰 Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
-            </h3>
-          </div>
-          
-          <!-- Informations de livraison -->
-          <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">🚚 Livraison</h3>
-            <p>Votre commande sera expédiée sous 24-48h ouvrées.</p>
-            <p>Vous recevrez un email de confirmation d'expédition avec le numéro de suivi.</p>
-          </div>
-          
-          <!-- Support -->
-          <div style="border-top: 2px solid #4CAF50; padding-top: 20px; margin-top: 30px;">
-            <h3 style="color: #333;">💬 Besoin d'aide ?</h3>
-            <p>Notre équipe est là pour vous aider !</p>
-            <p>📧 Email : <a href="mailto:contact@monsavonvert.com" style="color: #4CAF50;">contact@monsavonvert.com</a></p>
-          </div>
-          
         </div>
         
-        <!-- Footer -->
-        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px;">
-          <p style="margin: 0;">Merci de faire confiance à Mon Savon Vert ! 🌱</p>
-          <p style="margin: 5px 0 0 0;">Des savons naturels pour prendre soin de vous et de la planète</p>
+        <!-- BANNIÈRE INFÉRIEURE -->
+        <div style="width: 100%; background-color: #1b5e20; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+            
+            <!-- Contact -->
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #ffffff; margin: 0 0 20px 0; font-size: 18px; font-weight: 300; letter-spacing: 1px;">
+                BESOIN D'AIDE ?
+              </h3>
+              <p style="color: #a5d6a7; margin: 0 0 10px 0; font-size: 14px;">
+                Notre équipe est à votre disposition
+              </p>
+              <p style="margin: 15px 0;">
+                <a href="mailto:contact@monsavonvert.com" style="color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 500;">
+                  ✉ contact@monsavonvert.com
+                </a>
+              </p>
+            </div>
+            
+            <!-- Réseaux sociaux -->
+            <div style="margin-bottom: 30px;">
+              <p style="color: #a5d6a7; margin: 0 0 15px 0; font-size: 14px;">
+                Suivez-nous sur les réseaux
+              </p>
+              <div>
+                <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: rgba(255,255,255,0.1); border-radius: 50%; line-height: 40px; margin: 0 5px; text-decoration: none; color: #ffffff;">
+                  <span style="font-size: 18px;">f</span>
+                </a>
+                <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: rgba(255,255,255,0.1); border-radius: 50%; line-height: 40px; margin: 0 5px; text-decoration: none; color: #ffffff;">
+                  <span style="font-size: 18px;">📷</span>
+                </a>
+                <a href="#" style="display: inline-block; width: 40px; height: 40px; background-color: rgba(255,255,255,0.1); border-radius: 50%; line-height: 40px; margin: 0 5px; text-decoration: none; color: #ffffff;">
+                  <span style="font-size: 18px;">𝕏</span>
+                </a>
+              </div>
+            </div>
+            
+            <!-- Slogan -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+              <p style="color: #a5d6a7; margin: 0; font-size: 13px; font-style: italic;">
+                🌿 Des savons naturels pour prendre soin de vous et de la planète
+              </p>
+              <p style="color: #81c784; margin: 10px 0 0 0; font-size: 12px;">
+                © 2024 Mon Savon Vert - Tous droits réservés
+              </p>
+            </div>
+            
+          </div>
         </div>
         
       </body>
@@ -347,7 +431,7 @@ const sendOrderConfirmation = async (customer, order) => {
 
 /**
  * Fonction pour envoyer l'email de récupération de mot de passe
- * GARDÉE IDENTIQUE - seule la méthode d'envoi change
+ * STYLE COMPLETEMENT REFAIT - Logique identique
  */
 const sendPasswordResetEmail = async (user, resetToken) => {
   try {
@@ -369,79 +453,155 @@ const sendPasswordResetEmail = async (user, resetToken) => {
     
     console.log('🔐 URL de reset générée:', resetUrl);
     
-    // Template HTML pour l'email de récupération
+    // NOUVEAU TEMPLATE HTML PROFESSIONNEL
     const htmlContent = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Réinitialisation de mot de passe</title>
+        <title>Réinitialisation de mot de passe - Mon Savon Vert</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
         
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #FF6B6B, #ee5a52); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🔐 Mon Savon Vert</h1>
-          <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Réinitialisation de mot de passe</p>
-        </div>
-        
-        <!-- Contenu principal -->
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #ddd; border-top: none;">
-          
-          <h2 style="color: #FF6B6B; margin-top: 0;">🔑 Réinitialisation demandée</h2>
-          
-          <p>Bonjour,</p>
-          
-          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte <strong>${user.email}</strong>.</p>
-          
-          <!-- Bouton de réinitialisation -->
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="display: inline-block; 
-                      background: #FF6B6B; 
-                      color: white; 
-                      padding: 15px 30px; 
-                      text-decoration: none; 
-                      border-radius: 8px; 
-                      font-weight: bold; 
-                      font-size: 16px;">
-              🔄 Réinitialiser mon mot de passe
-            </a>
-          </div>
-          
-          <!-- Informations importantes -->
-          <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <h3 style="margin-top: 0; color: #856404;">⚠️ Important</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li>Ce lien expire dans <strong>1 heure</strong></li>
-              <li>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
-              <li>Ne partagez jamais ce lien avec personne</li>
-            </ul>
-          </div>
-          
-          <!-- Lien alternatif -->
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #333;">💻 Lien alternatif</h3>
-            <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
-            <p style="word-break: break-all; color: #FF6B6B; font-family: monospace; background: white; padding: 10px; border-radius: 4px;">
-              ${resetUrl}
+        <!-- BANNIÈRE SUPÉRIEURE -->
+        <div style="width: 100%; background-color: #1b5e20; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 300; letter-spacing: 2px;">
+              MON SAVON VERT
+            </h1>
+            <p style="color: #a5d6a7; margin: 10px 0 0 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase;">
+              Savons naturels & écologiques
             </p>
           </div>
-          
-          <!-- Support -->
-          <div style="border-top: 2px solid #FF6B6B; padding-top: 20px; margin-top: 30px;">
-            <h3 style="color: #333;">💬 Besoin d'aide ?</h3>
-            <p>Si vous rencontrez des difficultés, contactez notre support :</p>
-            <p>📧 Email : <a href="mailto:contact@monsavonvert.com" style="color: #FF6B6B;">contact@monsavonvert.com</a></p>
-          </div>
-          
         </div>
         
-        <!-- Footer -->
-        <div style="background: #f5f5f5; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; font-size: 14px;">
-          <p style="margin: 0;">Mon Savon Vert - Savons naturels et écologiques 🌱</p>
-          <p style="margin: 5px 0 0 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre</p>
+        <!-- CONTENU PRINCIPAL -->
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <div style="padding: 50px 40px 30px 40px;">
+            
+            <!-- Icône et titre -->
+            <div style="text-align: center; margin-bottom: 40px;">
+              <div style="display: inline-block; width: 80px; height: 80px; background-color: #fff3e0; border-radius: 50%; line-height: 80px; margin-bottom: 20px;">
+                <span style="font-size: 40px;">🔐</span>
+              </div>
+              <h2 style="color: #1b5e20; margin: 0 0 10px 0; font-size: 28px; font-weight: 400;">
+                Réinitialisation de mot de passe
+              </h2>
+              <p style="color: #666; margin: 0; font-size: 16px;">
+                Une demande de réinitialisation a été reçue
+              </p>
+            </div>
+            
+            <!-- Message principal -->
+            <div style="background-color: #fafafa; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+              <p style="color: #333; margin: 0 0 15px 0; font-size: 15px; line-height: 1.6;">
+                Bonjour,
+              </p>
+              <p style="color: #555; margin: 0 0 15px 0; font-size: 15px; line-height: 1.6;">
+                Nous avons reçu une demande de réinitialisation du mot de passe pour le compte associé à l'adresse <strong style="color: #1b5e20;">${user.email}</strong>.
+              </p>
+              <p style="color: #555; margin: 0; font-size: 15px; line-height: 1.6;">
+                Pour créer un nouveau mot de passe, cliquez sur le bouton ci-dessous :
+              </p>
+            </div>
+            
+            <!-- Bouton CTA -->
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${resetUrl}" 
+                 style="display: inline-block; 
+                        background-color: #1b5e20; 
+                        color: #ffffff; 
+                        padding: 16px 40px; 
+                        text-decoration: none; 
+                        border-radius: 50px; 
+                        font-weight: 600; 
+                        font-size: 16px;
+                        letter-spacing: 0.5px;
+                        box-shadow: 0 4px 15px rgba(27, 94, 32, 0.3);
+                        transition: all 0.3s ease;">
+                Réinitialiser mon mot de passe
+              </a>
+            </div>
+            
+            <!-- Avertissements de sécurité -->
+            <div style="background: #fff8e1; border-radius: 8px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
+              <h3 style="color: #f57c00; margin: 0 0 15px 0; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                ⚠️ Informations importantes
+              </h3>
+              <ul style="margin: 0; padding-left: 20px; color: #666;">
+                <li style="margin-bottom: 8px; font-size: 14px; line-height: 1.5;">
+                  Ce lien est valable pendant <strong>1 heure</strong>
+                </li>
+                <li style="margin-bottom: 8px; font-size: 14px; line-height: 1.5;">
+                  Si vous n'avez pas demandé cette réinitialisation, ignorez cet email
+                </li>
+                <li style="margin-bottom: 0; font-size: 14px; line-height: 1.5;">
+                  Ne partagez jamais ce lien avec quiconque
+                </li>
+              </ul>
+            </div>
+            
+            <!-- Lien alternatif -->
+            <div style="background-color: #f5f5f5; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+              <p style="color: #666; margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                Problème avec le bouton ?
+              </p>
+              <p style="color: #666; margin: 0 0 15px 0; font-size: 14px;">
+                Copiez et collez ce lien dans votre navigateur :
+              </p>
+              <div style="background-color: #ffffff; padding: 12px; border-radius: 4px; border: 1px solid #e0e0e0;">
+                <p style="word-break: break-all; color: #1b5e20; font-family: 'Courier New', monospace; font-size: 12px; margin: 0;">
+                  ${resetUrl}
+                </p>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+        
+        <!-- BANNIÈRE INFÉRIEURE -->
+        <div style="width: 100%; background-color: #1b5e20; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; text-align: center;">
+            
+            <!-- Support -->
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #ffffff; margin: 0 0 20px 0; font-size: 18px; font-weight: 300; letter-spacing: 1px;">
+                BESOIN D'ASSISTANCE ?
+              </h3>
+              <p style="color: #a5d6a7; margin: 0 0 10px 0; font-size: 14px;">
+                Notre équipe support est là pour vous aider
+              </p>
+              <p style="margin: 15px 0;">
+                <a href="mailto:contact@monsavonvert.com" style="color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 500;">
+                  ✉ contact@monsavonvert.com
+                </a>
+              </p>
+              <p style="color: #a5d6a7; margin: 10px 0 0 0; font-size: 14px;">
+                Disponible du lundi au vendredi, 9h-18h
+              </p>
+            </div>
+            
+            <!-- Sécurité -->
+            <div style="background-color: rgba(255,255,255,0.1); border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+              <p style="color: #c8e6c9; margin: 0; font-size: 13px; line-height: 1.6;">
+                🔒 Vos données sont protégées et sécurisées.<br>
+                Nous ne demandons jamais votre mot de passe par email.
+              </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+              <p style="color: #a5d6a7; margin: 0; font-size: 13px; font-style: italic;">
+                🌿 Des savons naturels pour prendre soin de vous et de la planète
+              </p>
+              <p style="color: #81c784; margin: 10px 0 0 0; font-size: 12px;">
+                © 2024 Mon Savon Vert - Tous droits réservés
+              </p>
+            </div>
+            
+          </div>
         </div>
         
       </body>
