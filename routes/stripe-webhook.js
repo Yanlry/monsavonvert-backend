@@ -3,8 +3,8 @@ const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Customer = require("../models/Customer");
 const Order = require("../models/Order");
-// Importer le module d'envoi d'email - VÉRIFIER QUE LE CHEMIN EST CORRECT
-const { sendOrderConfirmation } = require("../modules/emailSender");
+// Importer le module d'envoi d'email - AVEC NOTIFICATION ADMIN
+const { sendOrderConfirmation, sendOrderNotificationToAdmin } = require("../modules/emailSender");
 
 // Route spéciale pour tester l'envoi d'email manuellement
 router.get("/test-email/:orderId", async (req, res) => {
@@ -24,10 +24,13 @@ router.get("/test-email/:orderId", async (req, res) => {
       return res.status(404).send("Client non trouvé");
     }
     
-    // Envoyer l'email
+    // Envoyer l'email au client
     await sendOrderConfirmation(customer, order);
     
-    res.send("Email de test envoyé avec succès");
+    // Envoyer la notification à l'admin
+    await sendOrderNotificationToAdmin(customer, order);
+    
+    res.send("Email de test envoyé avec succès (client + admin)");
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email de test:", error);
     res.status(500).send(`Erreur: ${error.message}`);
@@ -105,7 +108,7 @@ router.post("/webhook-test", express.json(), async (req, res) => {
         items: parsedItems,
         totalAmount: parseFloat(totalAmount),
         status: "processing",
-        payment: "completed", // Marquer le paiement comme complété
+        payment: "completed",
         sessionId: session.id,
         shippingMethod,
         shippingCost: 0,
@@ -118,15 +121,19 @@ router.post("/webhook-test", express.json(), async (req, res) => {
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // Envoyer l'email de confirmation - NOUVEAU CODE DEBUG
-      console.log(`📧 Tentative d'envoi d'email au client ${customer.email} pour la commande ${newOrder._id}`);
+      // Envoyer les emails - CLIENT + ADMIN
+      console.log(`📧 Tentative d'envoi d'emails pour la commande ${newOrder._id}`);
       try {
-        // IMPORTANT: Ajout d'un await ici - il manquait peut-être avant
+        // Email de confirmation au client
         await sendOrderConfirmation(customer, newOrder);
         console.log(`✉️ Email de confirmation envoyé au client: ${customer.email}`);
+        
+        // Email de notification à l'admin
+        await sendOrderNotificationToAdmin(customer, newOrder);
+        console.log(`🔔 Email de notification envoyé à l'admin`);
+        
       } catch (emailError) {
-        console.error("❌ Erreur lors de l'envoi de l'email de confirmation:", emailError);
-        // Ne pas bloquer le processus si l'email échoue
+        console.error("❌ Erreur lors de l'envoi des emails:", emailError);
       }
 
       console.log("✅ Client et commande enregistrés avec succès.");
@@ -141,11 +148,9 @@ router.post("/webhook-test", express.json(), async (req, res) => {
 });
 
 // Route de production - cette route sera appelée par Stripe, pas par ton frontend
-// ATTENTION: Changer le format de la route pour passer le contenu brut correctement
 router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  // Pour le développement/test, si pas de signature, on traite quand même
   const sig = req.headers["stripe-signature"];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test'; // Utilise une valeur par défaut si pas de secret configuré
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test';
   
   console.log("📌 Webhook Stripe reçu - VÉRIFICATION");
   
@@ -242,7 +247,7 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
         items: parsedItems,
         totalAmount: parseFloat(totalAmount),
         status: "processing",
-        payment: "completed", // Marquer le paiement comme complété
+        payment: "completed",
         sessionId: session.id,
         shippingMethod,
         shippingCost: session.shipping_cost ? session.shipping_cost.amount_total / 100 : 0,
@@ -256,15 +261,19 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // EMPLACEMENT CRITIQUE - Envoyer l'email de confirmation
-      console.log(`📧 Tentative d'envoi d'email au client ${customer.email} pour la commande ${newOrder._id}`);
+      // EMPLACEMENT CRITIQUE - Envoyer les emails CLIENT + ADMIN
+      console.log(`📧 Tentative d'envoi d'emails pour la commande ${newOrder._id}`);
       try {
-        // IMPORTANT: Ajout d'un await ici 
+        // Email de confirmation au client
         await sendOrderConfirmation(customer, newOrder);
         console.log(`✉️ Email de confirmation envoyé au client: ${customer.email}`);
+        
+        // Email de notification à l'admin
+        await sendOrderNotificationToAdmin(customer, newOrder);
+        console.log(`🔔 Email de notification envoyé à l'admin`);
+        
       } catch (emailError) {
-        console.error("❌ ERREUR IMPORTANTE lors de l'envoi de l'email de confirmation:", emailError);
-        // Ajouter plus de logs de débogage
+        console.error("❌ ERREUR IMPORTANTE lors de l'envoi des emails:", emailError);
         console.error("Détail de l'erreur:", emailError.message);
         console.error("Stack trace:", emailError.stack);
       }
@@ -272,7 +281,6 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
       console.log("✅ Client et commande enregistrés avec succès.");
     } catch (error) {
       console.error("❌ Erreur lors de l'enregistrement du client ou de la commande:", error);
-      // Ne pas échouer le webhook même en cas d'erreur de traitement
       return res.status(200).send("Webhook reçu, erreur de traitement interne.");
     }
   }
@@ -281,7 +289,6 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
   console.log("📬 Réponse 200 envoyée à Stripe");
   res.status(200).send("Webhook reçu et traité avec succès.");
 });
-
 
 // Route de test pour envoyer un email manuellement
 router.get("/test-email-simple", async (req, res) => {
@@ -297,6 +304,7 @@ router.get("/test-email-simple", async (req, res) => {
     
     const testOrder = {
       _id: 'TEST123456789',
+      orderNumber: 'TEST-' + Date.now(),
       items: [
         {
           name: 'Test Savon',
@@ -304,25 +312,29 @@ router.get("/test-email-simple", async (req, res) => {
           quantity: 2
         }
       ],
-      totalAmount: 21.98
+      totalAmount: 21.98,
+      createdAt: new Date()
     };
     
-    // Envoyer l'email de test
+    // Envoyer l'email de test au client
     await sendOrderConfirmation(testCustomer, testOrder);
+    
+    // Envoyer la notification de test à l'admin
+    await sendOrderNotificationToAdmin(testCustomer, testOrder);
     
     res.json({
       success: true,
-      message: 'Email de test envoyé !',
-      destinataire: testCustomer.email
+      message: 'Emails de test envoyés (client + admin) !',
+      destinataire_client: testCustomer.email,
+      destinataire_admin: 'contact@monsavonvert.com'
     });
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email de test:', error);
+    console.error('Erreur lors de l\'envoi des emails de test:', error);
     res.status(500).json({
       success: false,
       error: error.message
     });
   }
 });
-
 
 module.exports = router;
