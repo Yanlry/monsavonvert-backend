@@ -1,5 +1,5 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet - VERSION CORRIGÉE
+// Migration complète vers Mailjet - VERSION CORRIGÉE + NOTIFICATION ADMIN
 // INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
 
 const Mailjet = require('node-mailjet');
@@ -107,6 +107,284 @@ const sendEmailViaMailjet = async ({ to, subject, htmlContent, textContent, from
     
     console.error('=== FIN ERREUR EMAIL ===\n');
     
+    throw error;
+  }
+};
+
+/**
+ * 🆕 NOUVELLE FONCTION - Notification d'admin pour nouvelle commande
+ * Cette fonction vous envoie un email à chaque nouvelle commande
+ */
+const sendOrderNotificationToAdmin = async (customer, order) => {
+  try {
+    console.log('\n🔔 === PRÉPARATION NOTIFICATION ADMIN ===');
+    console.log('🔔 Nouvelle commande de:', customer.email);
+    console.log('🔔 Numéro commande:', order.orderNumber);
+    console.log('🔔 Montant:', order.totalAmount);
+    console.log('🔔 Notification envoyée à: contact@monsavonvert.com');
+    
+    // Validation des données d'entrée
+    if (!customer || !customer.email) {
+      throw new Error('❌ Données client manquantes ou email invalide');
+    }
+    
+    if (!order || !order.orderNumber) {
+      throw new Error('❌ Données de commande manquantes');
+    }
+    
+    // Construction de la liste des produits pour l'admin
+    let productsList = '';
+    let totalItems = 0;
+    
+    if (order.products && order.products.length > 0) {
+      productsList = order.products.map(product => {
+        const productName = product.name || 'Produit sans nom';
+        const productPrice = product.price ? `${product.price.toFixed(2)}€` : 'Prix non disponible';
+        const productQuantity = product.quantity || 1;
+        totalItems += productQuantity;
+        
+        return `
+          <tr>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">
+              ${productName}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: center; font-weight: 500;">
+              ${productQuantity}
+            </td>
+            <td style="padding: 12px; border-bottom: 1px solid #e0e0e0; text-align: right; font-weight: 600; color: #1b5e20;">
+              ${productPrice}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      productsList = `
+        <tr>
+          <td colspan="3" style="padding: 20px; text-align: center; color: #666; font-style: italic;">
+            Aucun produit dans cette commande
+          </td>
+        </tr>
+      `;
+    }
+    
+    // Informations client pour l'admin
+    const customerInfo = `
+      <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <h4 style="margin: 0 0 15px 0; color: #1b5e20; font-size: 16px;">👤 Informations Client</h4>
+        <p style="margin: 5px 0;"><strong>Email :</strong> ${customer.email}</p>
+        <p style="margin: 5px 0;"><strong>Nom :</strong> ${customer.firstName || 'Non renseigné'} ${customer.lastName || ''}</p>
+        <p style="margin: 5px 0;"><strong>Téléphone :</strong> ${customer.phone || 'Non renseigné'}</p>
+        <p style="margin: 5px 0;"><strong>Adresse :</strong> ${customer.address || 'Non renseignée'}</p>
+        <p style="margin: 5px 0;"><strong>Ville :</strong> ${customer.city || 'Non renseignée'}</p>
+        <p style="margin: 5px 0;"><strong>Code postal :</strong> ${customer.zipCode || 'Non renseigné'}</p>
+      </div>
+    `;
+    
+    // Template HTML pour notification admin
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔔 Nouvelle commande - Mon Savon Vert</title>
+      </head>
+      <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa;">
+        
+        <!-- Container principal -->
+        <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+          
+          <!-- BANNIÈRE SUPÉRIEURE ADMIN -->
+          <div style="width: 100%; background: linear-gradient(135deg, #d32f2f, #f44336); padding: 40px 0; text-align: center;">
+            <h1 style="margin: 0; color: white; font-size: 32px; font-weight: bold;">
+              🔔 NOUVELLE COMMANDE !
+            </h1>
+            <p style="margin: 10px 0 0 0; color: #ffcdd2; font-size: 16px; font-weight: 300;">
+              Notification administrateur - Mon Savon Vert
+            </p>
+          </div>
+          
+          <!-- CONTENU PRINCIPAL -->
+          <div style="padding: 40px 30px;">
+            
+            <!-- Alerte nouvelle commande -->
+            <div style="background: linear-gradient(135deg, #ffebee, #fce4ec); border: 2px solid #f44336; border-radius: 15px; padding: 25px; margin-bottom: 30px; text-align: center;">
+              <h2 style="margin: 0 0 15px 0; color: #d32f2f; font-size: 24px; font-weight: bold;">
+                💰 Nouvelle vente réalisée !
+              </h2>
+              <p style="margin: 0; color: #c62828; font-size: 18px; font-weight: 600;">
+                Commande #${order.orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+              </p>
+              <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                Reçue le ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')} à ${new Date(order.createdAt || Date.now()).toLocaleTimeString('fr-FR')}
+              </p>
+            </div>
+            
+            <!-- Informations client -->
+            ${customerInfo}
+            
+            <!-- Récapitulatif commande -->
+            <div style="background: #ffffff; border: 2px solid #1b5e20; border-radius: 15px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="margin: 0 0 20px 0; color: #1b5e20; font-size: 20px; font-weight: bold; border-bottom: 2px solid #e8f5e8; padding-bottom: 10px;">
+                📋 Détails de la commande
+              </h3>
+              
+              <!-- Infos générales -->
+              <div style="display: grid; gap: 10px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                  <span style="font-weight: 600; color: #555;">Numéro :</span>
+                  <span style="font-weight: bold; color: #1b5e20;">#${order.orderNumber}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                  <span style="font-weight: 600; color: #555;">Date :</span>
+                  <span style="color: #333;">${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')} à ${new Date(order.createdAt || Date.now()).toLocaleTimeString('fr-FR')}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                  <span style="font-weight: 600; color: #555;">Client :</span>
+                  <span style="color: #1b5e20; font-weight: 500;">${customer.email}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                  <span style="font-weight: 600; color: #555;">Articles :</span>
+                  <span style="color: #333; font-weight: 500;">${totalItems} article${totalItems > 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              
+              <!-- Liste des produits -->
+              <h4 style="margin: 20px 0 15px 0; color: #1b5e20; font-size: 16px; font-weight: bold;">
+                🛒 Produits commandés
+              </h4>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <thead>
+                  <tr style="background: #1b5e20;">
+                    <th style="padding: 12px 10px; text-align: left; color: white; font-weight: bold; font-size: 14px;">Produit</th>
+                    <th style="padding: 12px 10px; text-align: center; color: white; font-weight: bold; font-size: 14px;">Qté</th>
+                    <th style="padding: 12px 10px; text-align: right; color: white; font-weight: bold; font-size: 14px;">Prix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${productsList}
+                </tbody>
+              </table>
+              
+              <!-- Total avec mise en évidence -->
+              <div style="background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 20px; border-radius: 10px; text-align: center;">
+                <h3 style="margin: 0; font-size: 20px; font-weight: bold;">
+                  💰 TOTAL : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+                </h3>
+                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 12px;">
+                  TVA incluse
+                </p>
+              </div>
+            </div>
+            
+            <!-- Actions à faire -->
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 15px; padding: 25px; margin-bottom: 30px;">
+              <h3 style="margin: 0 0 15px 0; color: #856404; font-size: 18px; font-weight: bold;">
+                ✅ Actions à effectuer
+              </h3>
+              <div style="color: #856404; line-height: 1.8;">
+                <p style="margin: 0 0 10px 0;">📦 <strong>1.</strong> Préparer la commande avec les produits listés ci-dessus</p>
+                <p style="margin: 0 0 10px 0;">📄 <strong>2.</strong> Imprimer l'étiquette d'expédition avec l'adresse client</p>
+                <p style="margin: 0 0 10px 0;">📧 <strong>3.</strong> Le client a automatiquement reçu son email de confirmation</p>
+                <p style="margin: 0;">🚚 <strong>4.</strong> Expédier sous 24-48h et notifier le client si besoin</p>
+              </div>
+            </div>
+            
+            <!-- Lien vers admin (optionnel) -->
+            <div style="text-align: center; margin: 30px 0;">
+              <p style="margin: 0 0 15px 0; color: #666;">Gérer cette commande :</p>
+              <a href="${process.env.ADMIN_URL || 'https://admin.monsavonvert.com'}/orders/${order.orderNumber}" 
+                 style="display: inline-block; 
+                        background: linear-gradient(135deg, #1b5e20, #2e7d32); 
+                        color: white; 
+                        padding: 15px 30px; 
+                        text-decoration: none; 
+                        border-radius: 10px; 
+                        font-weight: bold; 
+                        font-size: 16px;">
+                🖥️ Voir dans l'interface admin
+              </a>
+            </div>
+            
+          </div>
+          
+          <!-- BANNIÈRE INFÉRIEURE -->
+          <div style="width: 100%; background-color: #1b5e20; padding: 30px; text-align: center;">
+            <p style="margin: 0; color: #a5d6a7; font-size: 14px;">
+              📊 Notification automatique Mon Savon Vert • Nouvelle commande détectée
+            </p>
+            <p style="margin: 10px 0 0 0; color: #81c784; font-size: 12px;">
+              Email envoyé automatiquement à contact@monsavonvert.com
+            </p>
+          </div>
+          
+        </div>
+        
+      </body>
+      </html>
+    `;
+    
+    // Version texte pour l'admin
+    const textContent = `
+      🔔 NOUVELLE COMMANDE - Mon Savon Vert
+      
+      Une nouvelle commande vient d'être passée sur votre site !
+      
+      DÉTAILS DE LA COMMANDE :
+      - Numéro : #${order.orderNumber}
+      - Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')} à ${new Date(order.createdAt || Date.now()).toLocaleTimeString('fr-FR')}
+      - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+      - Articles : ${totalItems} article${totalItems > 1 ? 's' : ''}
+      
+      CLIENT :
+      - Email : ${customer.email}
+      - Nom : ${customer.firstName || 'Non renseigné'} ${customer.lastName || ''}
+      - Téléphone : ${customer.phone || 'Non renseigné'}
+      - Adresse : ${customer.address || 'Non renseignée'}
+      - Ville : ${customer.city || 'Non renseignée'} ${customer.zipCode || ''}
+      
+      PRODUITS COMMANDÉS :
+      ${order.products && order.products.length > 0 ? 
+        order.products.map(p => `- ${p.name || 'Produit'} x${p.quantity || 1} - ${p.price ? p.price.toFixed(2) : '0.00'}€`).join('\n') : 
+        'Aucun produit détaillé'}
+      
+      ACTIONS À FAIRE :
+      1. Préparer la commande
+      2. Imprimer l'étiquette d'expédition  
+      3. Expédier sous 24-48h
+      
+      Le client a reçu automatiquement son email de confirmation.
+      
+      Mon Savon Vert - Système de notification automatique
+    `;
+    
+    console.log('🔔 Template notification admin préparé');
+    
+    // Email de l'admin (vous) - ATTENTION: Changez cette adresse si nécessaire
+    const adminEmail = 'contact@monsavonvert.com';
+    
+    // Envoi de la notification à l'admin via Mailjet
+    const result = await sendEmailViaMailjet({
+      to: adminEmail,
+      subject: `🔔 NOUVELLE COMMANDE #${order.orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€`,
+      htmlContent: htmlContent,
+      textContent: textContent,
+      fromName: 'Mon Savon Vert - Notifications'
+    });
+    
+    console.log('🔔 === NOTIFICATION ADMIN ENVOYÉE ===');
+    console.log('🔔 Email admin:', adminEmail);
+    console.log('🔔 Commande notifiée:', order.orderNumber);
+    console.log('=== FIN NOTIFICATION ADMIN ===\n');
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ === ERREUR NOTIFICATION ADMIN ===');
+    console.error('❌ Erreur:', error.message);
+    console.error('❌ Commande concernée:', order?.orderNumber || 'Numéro non disponible');
+    console.error('❌ Client concerné:', customer?.email || 'Email non disponible');
+    console.error('=== FIN ERREUR NOTIFICATION ADMIN ===\n');
     throw error;
   }
 };
@@ -609,9 +887,11 @@ const sendPasswordResetEmail = async (user, resetToken) => {
 };
 
 // Export des fonctions pour utilisation dans vos routes
+// 🆕 NOUVELLE FONCTION AJOUTÉE : sendOrderNotificationToAdmin
 module.exports = {
   sendOrderConfirmation,
   sendPasswordResetEmail,
+  sendOrderNotificationToAdmin, // 🆕 NOUVELLE FONCTION
   testMailjetConnection,
   sendEmailViaMailjet
 };
