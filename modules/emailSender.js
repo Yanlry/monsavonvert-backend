@@ -400,7 +400,27 @@ const sendOrderConfirmation = async (customer, order) => {
       - Email : ${customer.email}
       - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
       
-      Votre commande sera expédiée sous 24-48h ouvrées.
+      ADRESSE DE LIVRAISON :
+      ${customer.firstName || ''} ${customer.lastName || ''}
+      ${(() => {
+        if (customer.address && customer.city && customer.postalCode) {
+          return `${customer.address}\n${customer.postalCode} ${customer.city}\n${customer.country || 'France'}`;
+        } else if (customer.addresses && customer.addresses.length > 0) {
+          const addr = customer.addresses[0];
+          return `${addr.street}\n${addr.postalCode} ${addr.city}\n${addr.country || 'France'}`;
+        }
+        return 'Adresse non disponible';
+      })()}
+      
+      MODE DE LIVRAISON :
+      ${order.shippingMethod === 'pickup' ? 
+        '🏪 Remise en main propre - Nous vous contacterons pour organiser la récupération' :
+        order.shippingMethod === 'express' ?
+        '⚡ Livraison express - Livraison en 24-48h ouvrées' :
+        '📦 Livraison standard - Livraison en 3-5 jours ouvrées'
+      }
+      
+      ${order.shippingMethod !== 'pickup' ? 'Vous recevrez un email de confirmation d\'expédition avec numéro de suivi.' : ''}
       
       Besoin d'aide ? Contactez-nous : contact@monsavonvert.com
       
