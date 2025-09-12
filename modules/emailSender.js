@@ -1,5 +1,5 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet + NOTIFICATION ADMIN - VERSION CORRIGÉE FINAL
+// Migration complète vers Mailjet + NOTIFICATION ADMIN - VERSION FINALE CORRIGÉE
 // INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
 
 const Mailjet = require('node-mailjet');
@@ -47,6 +47,48 @@ const generateOrderNumber = (orderId) => {
   // Prendre les 8 derniers caractères de l'ObjectId et les mettre en majuscules
   const shortId = orderId.toString().slice(-8).toUpperCase();
   return `CMD-${shortId}`;
+};
+
+/**
+ * NOUVELLE FONCTION : Récupération de l'adresse complète du client
+ */
+const getCompleteCustomerAddress = (customer) => {
+  console.log('🏠 Récupération de l\'adresse pour:', customer);
+  
+  // Essayer d'abord le format User (avec tableau addresses)
+  if (customer.addresses && customer.addresses.length > 0) {
+    const addr = customer.addresses[0];
+    return {
+      name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+      street: addr.street || '',
+      postalCode: addr.postalCode || '',
+      city: addr.city || '',
+      country: addr.country || 'France',
+      phone: customer.phone || ''
+    };
+  }
+  
+  // Ensuite le format Customer (champs séparés)
+  if (customer.address && customer.city && customer.postalCode) {
+    return {
+      name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
+      street: customer.address,
+      postalCode: customer.postalCode,
+      city: customer.city,
+      country: customer.country || 'France',
+      phone: customer.phone || ''
+    };
+  }
+  
+  // Fallback avec ce qu'on a
+  return {
+    name: customer.firstName ? `${customer.firstName} ${customer.lastName || ''}`.trim() : 'Client',
+    street: customer.address || 'Adresse non disponible',
+    postalCode: customer.postalCode || '',
+    city: customer.city || '',
+    country: customer.country || 'France',
+    phone: customer.phone || ''
+  };
 };
 
 /**
@@ -153,7 +195,7 @@ const testMailjetConnection = async () => {
     
     const response = await mailjetClient
       .post('send', { version: 'v3.1' })
-      .request(testEmailData);
+      .request(emailData);
     
     console.log('✅ Test Mailjet réussi !');
     console.log('📬 Statut:', response.response.status);
@@ -178,7 +220,7 @@ const testMailjetConnection = async () => {
 
 /**
  * Fonction pour envoyer l'email de confirmation de commande au CLIENT
- * VERSION CORRIGÉE - Utilise order._id au lieu de order.orderNumber
+ * VERSION CORRIGÉE FINALE - Avec adresse complète et méthode de livraison
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
@@ -186,6 +228,7 @@ const sendOrderConfirmation = async (customer, order) => {
     console.log('💼 Client:', customer.email);
     console.log('💼 Order ID:', order._id);
     console.log('💼 Montant:', order.totalAmount);
+    console.log('💼 Données client reçues:', JSON.stringify(customer, null, 2));
     
     // Validation des données d'entrée - CORRIGÉE
     if (!customer || !customer.email) {
@@ -195,6 +238,10 @@ const sendOrderConfirmation = async (customer, order) => {
     if (!order || !order._id) {
       throw new Error('❌ Données de commande manquantes - Order ID requis');
     }
+    
+    // Récupérer l'adresse complète du client
+    const customerAddress = getCompleteCustomerAddress(customer);
+    console.log('🏠 Adresse récupérée:', customerAddress);
     
     // Générer un numéro de commande lisible à partir de l'_id
     const orderNumber = generateOrderNumber(order._id);
@@ -330,14 +377,48 @@ const sendOrderConfirmation = async (customer, order) => {
               </p>
             </div>
             
-            <!-- Informations de livraison -->
+            <!-- NOUVELLE SECTION : Informations de livraison avec adresse complète et méthode -->
             <div style="background: #e8f5e8; border-radius: 15px; padding: 30px; margin-bottom: 35px; border-left: 5px solid #1b5e20;">
               <h3 style="margin: 0 0 20px 0; color: #1b5e20; font-size: 20px; font-weight: bold;">
                 🚚 Informations de livraison
               </h3>
+              
+              <!-- Adresse de livraison -->
+              <div style="background: #ffffff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c8e6c9;">
+                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">📦 Adresse de livraison :</h4>
+                <p style="margin: 0; color: #2e7d32; line-height: 1.6; font-weight: 500;">
+                  ${customerAddress.name}<br>
+                  ${customerAddress.street}<br>
+                  ${customerAddress.postalCode} ${customerAddress.city}<br>
+                  ${customerAddress.country}
+                  ${customerAddress.phone ? `<br>📱 ${customerAddress.phone}` : ''}
+                </p>
+              </div>
+              
+              <!-- Méthode de livraison -->
+              <div style="background: #ffffff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c8e6c9;">
+                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">🚛 Mode de livraison :</h4>
+                ${order.shippingMethod === 'pickup' ? `
+                  <div style="color: #2e7d32; font-weight: 600;">
+                    🏪 <strong>Remise en main propre</strong><br>
+                    <span style="font-size: 14px; opacity: 0.8;">Nous vous contacterons pour organiser la récupération</span>
+                  </div>
+                ` : order.shippingMethod === 'express' ? `
+                  <div style="color: #2e7d32; font-weight: 600;">
+                    ⚡ <strong>Livraison express</strong><br>
+                    <span style="font-size: 14px; opacity: 0.8;">Livraison en 24-48h ouvrées</span>
+                  </div>
+                ` : `
+                  <div style="color: #2e7d32; font-weight: 600;">
+                    📦 <strong>Livraison standard</strong><br>
+                    <span style="font-size: 14px; opacity: 0.8;">Livraison en 3-5 jours ouvrées</span>
+                  </div>
+                `}
+              </div>
+              
               <div style="color: #2e7d32; line-height: 1.8;">
                 <p style="margin: 0 0 10px 0;">📦 <strong>Préparation :</strong> Votre commande sera préparée avec soin sous 24-48h ouvrées</p>
-                <p style="margin: 0 0 10px 0;">🚛 <strong>Expédition :</strong> Vous recevrez un email de confirmation d'expédition avec numéro de suivi</p>
+                ${order.shippingMethod !== 'pickup' ? `<p style="margin: 0 0 10px 0;">🚛 <strong>Expédition :</strong> Vous recevrez un email de confirmation d'expédition avec numéro de suivi</p>` : ''}
                 <p style="margin: 0;">🌍 <strong>Engagement :</strong> Emballage 100% recyclable et livraison éco-responsable</p>
               </div>
             </div>
@@ -386,7 +467,7 @@ const sendOrderConfirmation = async (customer, order) => {
       </html>
     `;
     
-    // Version texte de l'email
+    // Version texte de l'email avec adresse et méthode de livraison
     const textContent = `
       MON SAVON VERT - Confirmation de commande
       
@@ -401,16 +482,11 @@ const sendOrderConfirmation = async (customer, order) => {
       - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
       
       ADRESSE DE LIVRAISON :
-      ${customer.firstName || ''} ${customer.lastName || ''}
-      ${(() => {
-        if (customer.address && customer.city && customer.postalCode) {
-          return `${customer.address}\n${customer.postalCode} ${customer.city}\n${customer.country || 'France'}`;
-        } else if (customer.addresses && customer.addresses.length > 0) {
-          const addr = customer.addresses[0];
-          return `${addr.street}\n${addr.postalCode} ${addr.city}\n${addr.country || 'France'}`;
-        }
-        return 'Adresse non disponible';
-      })()}
+      ${customerAddress.name}
+      ${customerAddress.street}
+      ${customerAddress.postalCode} ${customerAddress.city}
+      ${customerAddress.country}
+      ${customerAddress.phone ? `Tel: ${customerAddress.phone}` : ''}
       
       MODE DE LIVRAISON :
       ${order.shippingMethod === 'pickup' ? 
@@ -454,7 +530,7 @@ const sendOrderConfirmation = async (customer, order) => {
 
 /**
  * NOUVELLE FONCTION : Notification ADMIN pour chaque nouvelle commande
- * VERSION CORRIGÉE - Utilise order._id au lieu de order.orderNumber
+ * VERSION CORRIGÉE FINALE - Avec adresse complète et méthode de livraison
  */
 const sendOrderNotificationToAdmin = async (customer, order) => {
   try {
@@ -476,6 +552,41 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     // Générer un numéro de commande lisible à partir de l'_id
     const orderNumber = generateOrderNumber(order._id);
     console.log('🚨 Numéro de commande généré:', orderNumber);
+    
+    // Récupérer l'adresse complète du client pour l'admin
+    const customerAddress = getCompleteCustomerAddress(customer);
+    console.log('🏠 Adresse admin récupérée:', customerAddress);
+    
+    // Récupération de la méthode de livraison
+    let shippingMethodText = '';
+    if (order.shippingMethod === 'pickup') {
+      shippingMethodText = `
+        <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4caf50;">
+          <p style="margin: 0; color: #2e7d32; font-weight: 600;">
+            🏪 <strong>Remise en main propre</strong><br>
+            <span style="font-size: 14px; opacity: 0.8;">Le client viendra récupérer sa commande</span>
+          </p>
+        </div>
+      `;
+    } else if (order.shippingMethod === 'express') {
+      shippingMethodText = `
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #ff9800;">
+          <p style="margin: 0; color: #ef6c00; font-weight: 600;">
+            ⚡ <strong>Livraison express</strong><br>
+            <span style="font-size: 14px; opacity: 0.8;">Livraison en 24-48h</span>
+          </p>
+        </div>
+      `;
+    } else {
+      shippingMethodText = `
+        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #1976d2;">
+          <p style="margin: 0; color: #1565c0; font-weight: 600;">
+            📦 <strong>Livraison standard</strong><br>
+            <span style="font-size: 14px; opacity: 0.8;">Livraison en 3-5 jours ouvrés</span>
+          </p>
+        </div>
+      `;
+    }
     
     // Construction de la liste des produits pour l'admin - CORRIGÉE
     let adminProductsList = '';
@@ -513,17 +624,20 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       `;
     }
     
-    // Informations de livraison (si disponibles) - CORRIGÉE
-    const shippingInfo = order.shippingAddress ? `
+    const shippingInfo = `
       <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
         <h4 style="margin: 0 0 15px 0; color: #1976d2; font-size: 16px;">📦 Adresse de livraison :</h4>
-        <p style="margin: 0; color: #555; line-height: 1.6;">
-          ${order.shippingAddress.street || ''}<br>
-          ${order.shippingAddress.postalCode || ''} ${order.shippingAddress.city || ''}<br>
-          ${order.shippingAddress.country || 'France'}
+        <p style="margin: 0 0 15px 0; color: #555; line-height: 1.6;">
+          ${customerAddress.name}<br>
+          ${customerAddress.street}<br>
+          ${customerAddress.postalCode} ${customerAddress.city}<br>
+          ${customerAddress.country}
+          ${customerAddress.phone ? `<br>📱 ${customerAddress.phone}` : ''}
         </p>
+        <h4 style="margin: 15px 0 10px 0; color: #1976d2; font-size: 16px;">🚚 Méthode de livraison :</h4>
+        ${shippingMethodText}
       </div>
-    ` : '<p style="color: #ff9800; font-style: italic;">ℹ️ Adresse de livraison non disponible</p>';
+    `;
     
     // Template HTML pour l'admin - Style professionnel
     const adminHtmlContent = `
@@ -590,7 +704,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
               </div>
             </div>
             
-            <!-- Informations de livraison -->
+            <!-- Informations de livraison AVEC ADRESSE COMPLÈTE -->
             <div style="background: #ffffff; border: 2px solid #4caf50; border-radius: 15px; padding: 25px; margin-bottom: 25px;">
               <h3 style="margin: 0 0 20px 0; color: #4caf50; font-size: 20px; font-weight: bold; border-bottom: 2px solid #e8f5e8; padding-bottom: 10px;">
                 🚚 Informations de livraison
@@ -660,9 +774,9 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
               </h3>
               <div style="color: #0d47a1; line-height: 1.8;">
                 <p style="margin: 0 0 12px 0;">📦 <strong>1. Vérifier les stocks</strong> des produits commandés</p>
-                <p style="margin: 0 0 12px 0;">🏷️ <strong>2. Préparer les étiquettes</strong> d'expédition</p>
+                <p style="margin: 0 0 12px 0;">🏷️ <strong>2. Préparer les étiquettes</strong> d'expédition ${order.shippingMethod === 'pickup' ? '(pas nécessaire pour remise en main propre)' : ''}</p>
                 <p style="margin: 0 0 12px 0;">📋 <strong>3. Organiser la préparation</strong> de la commande</p>
-                <p style="margin: 0 0 12px 0;">📧 <strong>4. Prévoir l'envoi du suivi</strong> au client</p>
+                <p style="margin: 0 0 12px 0;">📧 <strong>4. ${order.shippingMethod === 'pickup' ? 'Contacter le client pour organiser la récupération' : 'Prévoir l\'envoi du suivi au client'}</strong></p>
                 <p style="margin: 0;">💼 <strong>5. Mettre à jour</strong> le système de gestion</p>
               </div>
             </div>
@@ -722,11 +836,26 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       👤 Nom : ${customer.firstName || 'Non renseigné'} ${customer.lastName || ''}
       📱 Téléphone : ${customer.phone || 'Non renseigné'}
       
+      === ADRESSE DE LIVRAISON ===
+      ${customerAddress.name}
+      ${customerAddress.street}
+      ${customerAddress.postalCode} ${customerAddress.city}
+      ${customerAddress.country}
+      ${customerAddress.phone ? `Tel: ${customerAddress.phone}` : ''}
+      
+      === MODE DE LIVRAISON ===
+      ${order.shippingMethod === 'pickup' ? 
+        '🏪 Remise en main propre - Contacter le client pour organiser la récupération' :
+        order.shippingMethod === 'express' ?
+        '⚡ Livraison express - Livraison en 24-48h' :
+        '📦 Livraison standard - Livraison en 3-5 jours ouvrés'
+      }
+      
       === ACTIONS À PRENDRE ===
       1. Vérifier les stocks
-      2. Préparer les étiquettes
+      2. Préparer les étiquettes ${order.shippingMethod === 'pickup' ? '(pas nécessaire pour remise en main propre)' : ''}
       3. Organiser la préparation
-      4. Prévoir l'envoi du suivi
+      4. ${order.shippingMethod === 'pickup' ? 'Contacter le client pour organiser la récupération' : 'Prévoir l\'envoi du suivi'}
       5. Mettre à jour le système
       
       Cette commande nécessite un traitement rapide !
