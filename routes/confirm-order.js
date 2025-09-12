@@ -4,8 +4,8 @@ const Order = require('../models/Order');
 const Customer = require('../models/Customer');
 const User = require('../models/user');
 const Product = require('../models/product');
-// Import du module d'envoi d'email - AVEC NOTIFICATION ADMIN
-const { sendOrderConfirmation, sendOrderNotificationToAdmin } = require('../modules/emailSender');
+// Import du module d'envoi d'email que nous allons créer
+const { sendOrderConfirmation } = require('../modules/emailSender');
 
 // Route pour confirmer une commande après paiement Stripe
 router.post('/confirm-order', async (req, res) => {
@@ -159,20 +159,14 @@ router.post('/confirm-order', async (req, res) => {
     
     console.log("✅ Stocks mis à jour avec succès:", stockUpdates);
 
-    // Envoyer les emails - CLIENT + ADMIN
+    // NOUVEAU: Envoyer l'email de confirmation au client
     try {
-      console.log(`📧 Envoi des emails pour la commande ${newOrder._id}`);
-      
-      // Email de confirmation au client
+      console.log(`📧 Envoi de l'email de confirmation au client: ${customer.email}`);
+      // Utilisation de la fonction d'envoi d'email avec le vrai client et la vraie commande
       await sendOrderConfirmation(customer, newOrder);
-      console.log(`✉️ Email de confirmation envoyé au client: ${customer.email}`);
-      
-      // Email de notification à l'admin
-      await sendOrderNotificationToAdmin(customer, newOrder);
-      console.log(`🔔 Email de notification envoyé à l'admin`);
-      
+      console.log(`✉️ Email de confirmation envoyé avec succès au client: ${customer.email}`);
     } catch (emailError) {
-      console.error("❌ Erreur lors de l'envoi des emails:", emailError);
+      console.error("❌ Erreur lors de l'envoi de l'email de confirmation:", emailError);
       // On continue même si l'email échoue pour ne pas bloquer la commande
     }
 
