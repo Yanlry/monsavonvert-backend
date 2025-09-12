@@ -1,5 +1,5 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet - VERSION CORRIGÉE + NOTIFICATION ADMIN
+// Migration complète vers Mailjet - VERSION CORRIGÉE + NOTIFICATION ADMIN + FIX ORDERNUMBER
 // INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
 
 const Mailjet = require('node-mailjet');
@@ -112,14 +112,36 @@ const sendEmailViaMailjet = async ({ to, subject, htmlContent, textContent, from
 };
 
 /**
+ * Fonction utilitaire pour obtenir un numéro de commande
+ * 🔧 FIX : Gère les cas où orderNumber n'existe pas
+ */
+const getOrderNumber = (order) => {
+  // Essayer d'abord orderNumber
+  if (order.orderNumber) {
+    return order.orderNumber;
+  }
+  
+  // Sinon utiliser _id
+  if (order._id) {
+    return order._id.toString();
+  }
+  
+  // En dernier recours, générer un numéro
+  return `ORDER-${Date.now()}`;
+};
+
+/**
  * 🆕 NOUVELLE FONCTION - Notification d'admin pour nouvelle commande
  * Cette fonction vous envoie un email à chaque nouvelle commande
  */
 const sendOrderNotificationToAdmin = async (customer, order) => {
   try {
+    // 🔧 FIX : Utiliser la fonction pour obtenir le numéro de commande
+    const orderNumber = getOrderNumber(order);
+    
     console.log('\n🔔 === PRÉPARATION NOTIFICATION ADMIN ===');
     console.log('🔔 Nouvelle commande de:', customer.email);
-    console.log('🔔 Numéro commande:', order.orderNumber);
+    console.log('🔔 Numéro commande:', orderNumber);
     console.log('🔔 Montant:', order.totalAmount);
     console.log('🔔 Notification envoyée à: contact@monsavonvert.com');
     
@@ -128,7 +150,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       throw new Error('❌ Données client manquantes ou email invalide');
     }
     
-    if (!order || !order.orderNumber) {
+    if (!order) {
       throw new Error('❌ Données de commande manquantes');
     }
     
@@ -136,9 +158,12 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     let productsList = '';
     let totalItems = 0;
     
-    if (order.products && order.products.length > 0) {
-      productsList = order.products.map(product => {
-        const productName = product.name || 'Produit sans nom';
+    // 🔧 FIX : Gérer à la fois items et products
+    const orderItems = order.items || order.products || [];
+    
+    if (orderItems && orderItems.length > 0) {
+      productsList = orderItems.map(product => {
+        const productName = product.name || product.title || 'Produit sans nom';
         const productPrice = product.price ? `${product.price.toFixed(2)}€` : 'Prix non disponible';
         const productQuantity = product.quantity || 1;
         totalItems += productQuantity;
@@ -176,7 +201,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
         <p style="margin: 5px 0;"><strong>Téléphone :</strong> ${customer.phone || 'Non renseigné'}</p>
         <p style="margin: 5px 0;"><strong>Adresse :</strong> ${customer.address || 'Non renseignée'}</p>
         <p style="margin: 5px 0;"><strong>Ville :</strong> ${customer.city || 'Non renseignée'}</p>
-        <p style="margin: 5px 0;"><strong>Code postal :</strong> ${customer.zipCode || 'Non renseigné'}</p>
+        <p style="margin: 5px 0;"><strong>Code postal :</strong> ${customer.zipCode || customer.postalCode || 'Non renseigné'}</p>
       </div>
     `;
     
@@ -213,7 +238,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
                 💰 Nouvelle vente réalisée !
               </h2>
               <p style="margin: 0; color: #c62828; font-size: 18px; font-weight: 600;">
-                Commande #${order.orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+                Commande #${orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€
               </p>
               <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
                 Reçue le ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')} à ${new Date(order.createdAt || Date.now()).toLocaleTimeString('fr-FR')}
@@ -233,7 +258,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
               <div style="display: grid; gap: 10px; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
                   <span style="font-weight: 600; color: #555;">Numéro :</span>
-                  <span style="font-weight: bold; color: #1b5e20;">#${order.orderNumber}</span>
+                  <span style="font-weight: bold; color: #1b5e20;">#${orderNumber}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
                   <span style="font-weight: 600; color: #555;">Date :</span>
@@ -269,7 +294,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
               <!-- Total avec mise en évidence -->
               <div style="background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 20px; border-radius: 10px; text-align: center;">
                 <h3 style="margin: 0; font-size: 20px; font-weight: bold;">
-                  💰 TOTAL : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+                  💰 TOTAL : ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€
                 </h3>
                 <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 12px;">
                   TVA incluse
@@ -293,7 +318,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
             <!-- Lien vers admin (optionnel) -->
             <div style="text-align: center; margin: 30px 0;">
               <p style="margin: 0 0 15px 0; color: #666;">Gérer cette commande :</p>
-              <a href="${process.env.ADMIN_URL || 'https://admin.monsavonvert.com'}/orders/${order.orderNumber}" 
+              <a href="${process.env.ADMIN_URL || 'https://admin.monsavonvert.com'}/orders/${orderNumber}" 
                  style="display: inline-block; 
                         background: linear-gradient(135deg, #1b5e20, #2e7d32); 
                         color: white; 
@@ -331,9 +356,9 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       Une nouvelle commande vient d'être passée sur votre site !
       
       DÉTAILS DE LA COMMANDE :
-      - Numéro : #${order.orderNumber}
+      - Numéro : #${orderNumber}
       - Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')} à ${new Date(order.createdAt || Date.now()).toLocaleTimeString('fr-FR')}
-      - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+      - Total : ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€
       - Articles : ${totalItems} article${totalItems > 1 ? 's' : ''}
       
       CLIENT :
@@ -341,11 +366,11 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       - Nom : ${customer.firstName || 'Non renseigné'} ${customer.lastName || ''}
       - Téléphone : ${customer.phone || 'Non renseigné'}
       - Adresse : ${customer.address || 'Non renseignée'}
-      - Ville : ${customer.city || 'Non renseignée'} ${customer.zipCode || ''}
+      - Ville : ${customer.city || 'Non renseignée'} ${customer.zipCode || customer.postalCode || ''}
       
       PRODUITS COMMANDÉS :
-      ${order.products && order.products.length > 0 ? 
-        order.products.map(p => `- ${p.name || 'Produit'} x${p.quantity || 1} - ${p.price ? p.price.toFixed(2) : '0.00'}€`).join('\n') : 
+      ${orderItems && orderItems.length > 0 ? 
+        orderItems.map(p => `- ${p.name || p.title || 'Produit'} x${p.quantity || 1} - ${p.price ? p.price.toFixed(2) : '0.00'}€`).join('\n') : 
         'Aucun produit détaillé'}
       
       ACTIONS À FAIRE :
@@ -366,7 +391,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     // Envoi de la notification à l'admin via Mailjet
     const result = await sendEmailViaMailjet({
       to: adminEmail,
-      subject: `🔔 NOUVELLE COMMANDE #${order.orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€`,
+      subject: `🔔 NOUVELLE COMMANDE #${orderNumber} - ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€`,
       htmlContent: htmlContent,
       textContent: textContent,
       fromName: 'Mon Savon Vert - Notifications'
@@ -374,7 +399,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     
     console.log('🔔 === NOTIFICATION ADMIN ENVOYÉE ===');
     console.log('🔔 Email admin:', adminEmail);
-    console.log('🔔 Commande notifiée:', order.orderNumber);
+    console.log('🔔 Commande notifiée:', orderNumber);
     console.log('=== FIN NOTIFICATION ADMIN ===\n');
     
     return result;
@@ -382,7 +407,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
   } catch (error) {
     console.error('❌ === ERREUR NOTIFICATION ADMIN ===');
     console.error('❌ Erreur:', error.message);
-    console.error('❌ Commande concernée:', order?.orderNumber || 'Numéro non disponible');
+    console.error('❌ Commande concernée:', order?._id || 'ID non disponible');
     console.error('❌ Client concerné:', customer?.email || 'Email non disponible');
     console.error('=== FIN ERREUR NOTIFICATION ADMIN ===\n');
     throw error;
@@ -420,7 +445,7 @@ const testMailjetConnection = async () => {
     
     const response = await mailjetClient
       .post('send', { version: 'v3.1' })
-      .request(testEmailData);
+      .request(emailData);
     
     console.log('✅ Test Mailjet réussi !');
     console.log('📬 Statut:', response.response.status);
@@ -445,29 +470,36 @@ const testMailjetConnection = async () => {
 
 /**
  * Fonction pour envoyer l'email de confirmation de commande
- * NOUVEAU STYLE MON SAVON VERT - Logique gardée identique
+ * 🔧 FIX : Gestion flexible des numéros de commande
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
+    // 🔧 FIX : Utiliser la fonction pour obtenir le numéro de commande
+    const orderNumber = getOrderNumber(order);
+    
     console.log('\n💼 === PRÉPARATION EMAIL COMMANDE ===');
     console.log('💼 Client:', customer.email);
-    console.log('💼 Numéro commande:', order.orderNumber);
+    console.log('💼 Numéro commande:', orderNumber);
     console.log('💼 Montant:', order.totalAmount);
     
-    // Validation des données d'entrée
+    // Validation des données d'entrée - VERSION FLEXIBLE
     if (!customer || !customer.email) {
       throw new Error('❌ Données client manquantes ou email invalide');
     }
     
-    if (!order || !order.orderNumber) {
+    if (!order) {
       throw new Error('❌ Données de commande manquantes');
     }
     
-    // Construction de la liste des produits
+    // Construction de la liste des produits - VERSION FLEXIBLE
     let productsList = '';
-    if (order.products && order.products.length > 0) {
-      productsList = order.products.map(product => {
-        const productName = product.name || 'Produit sans nom';
+    
+    // 🔧 FIX : Gérer à la fois items et products
+    const orderItems = order.items || order.products || [];
+    
+    if (orderItems && orderItems.length > 0) {
+      productsList = orderItems.map(product => {
+        const productName = product.name || product.title || 'Produit sans nom';
         const productPrice = product.price ? `${product.price.toFixed(2)}€` : 'Prix non disponible';
         const productQuantity = product.quantity || 1;
         
@@ -551,7 +583,7 @@ const sendOrderConfirmation = async (customer, order) => {
               <div style="display: grid; gap: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
                   <span style="font-weight: 600; color: #555;">Numéro de commande :</span>
-                  <span style="font-weight: bold; color: #1b5e20; font-size: 16px;">#${order.orderNumber}</span>
+                  <span style="font-weight: bold; color: #1b5e20; font-size: 16px;">#${orderNumber}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
                   <span style="font-weight: 600; color: #555;">Date de commande :</span>
@@ -586,7 +618,7 @@ const sendOrderConfirmation = async (customer, order) => {
             <!-- Total -->
             <div style="background: linear-gradient(135deg, #1b5e20, #2e7d32); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 35px;">
               <h3 style="margin: 0; font-size: 24px; font-weight: bold;">
-                💰 Total de votre commande : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+                💰 Total de votre commande : ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€
               </h3>
               <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">
                 TVA incluse • Livraison calculée à l'étape suivante
@@ -658,10 +690,10 @@ const sendOrderConfirmation = async (customer, order) => {
       Nous avons bien reçu votre commande et nous vous remercions !
       
       DÉTAILS DE VOTRE COMMANDE :
-      - Numéro : ${order.orderNumber}
+      - Numéro : ${orderNumber}
       - Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}
       - Email : ${customer.email}
-      - Total : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
+      - Total : ${order.totalAmount ? order.totalAmount.toFixed ? order.totalAmount.toFixed(2) : order.totalAmount : '0.00'}€
       
       Votre commande sera expédiée sous 24-48h ouvrées.
       
@@ -676,7 +708,7 @@ const sendOrderConfirmation = async (customer, order) => {
     // Envoi via Mailjet
     const result = await sendEmailViaMailjet({
       to: customer.email,
-      subject: `✅ Commande confirmée #${order.orderNumber} - Mon Savon Vert`,
+      subject: `✅ Commande confirmée #${orderNumber} - Mon Savon Vert`,
       htmlContent: htmlContent,
       textContent: textContent,
       fromName: 'Mon Savon Vert - Confirmations'
@@ -689,7 +721,7 @@ const sendOrderConfirmation = async (customer, order) => {
     console.error('❌ === ERREUR EMAIL COMMANDE ===');
     console.error('❌ Erreur:', error.message);
     console.error('❌ Client concerné:', customer?.email || 'Email non disponible');
-    console.error('❌ Commande concernée:', order?.orderNumber || 'Numéro non disponible');
+    console.error('❌ Commande concernée:', order?._id || 'ID non disponible');
     console.error('=== FIN ERREUR EMAIL COMMANDE ===\n');
     throw error;
   }
