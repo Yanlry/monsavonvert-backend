@@ -3,8 +3,8 @@ const router = express.Router();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Customer = require("../models/Customer");
 const Order = require("../models/Order");
-// Importer le module d'envoi d'email - VÉRIFIER QUE LE CHEMIN EST CORRECT
-const { sendOrderConfirmation } = require("../modules/emailSender");
+// Importer le module d'envoi d'email AVEC LA NOUVELLE FONCTION
+const { sendOrderConfirmation, sendOrderNotificationToAdmin } = require("../modules/emailSender");
 
 // Route spéciale pour tester l'envoi d'email manuellement
 router.get("/test-email/:orderId", async (req, res) => {
@@ -24,12 +24,13 @@ router.get("/test-email/:orderId", async (req, res) => {
       return res.status(404).send("Client non trouvé");
     }
     
-    // Envoyer l'email
+    // Envoyer les emails (client + admin)
     await sendOrderConfirmation(customer, order);
+    await sendOrderNotificationToAdmin(customer, order);
     
-    res.send("Email de test envoyé avec succès");
+    res.send("Emails de test envoyés avec succès (client + admin)");
   } catch (error) {
-    console.error("Erreur lors de l'envoi de l'email de test:", error);
+    console.error("Erreur lors de l'envoi des emails de test:", error);
     res.status(500).send(`Erreur: ${error.message}`);
   }
 });
@@ -118,16 +119,30 @@ router.post("/webhook-test", express.json(), async (req, res) => {
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // Envoyer l'email de confirmation - NOUVEAU CODE DEBUG
-      console.log(`📧 Tentative d'envoi d'email au client ${customer.email} pour la commande ${newOrder._id}`);
+      // === NOUVELLE SECTION : ENVOI DES EMAILS ===
+      console.log("\n📧 === DÉBUT ENVOI DES EMAILS ===");
+      
+      // 1. Envoyer l'email de confirmation au CLIENT
       try {
-        // IMPORTANT: Ajout d'un await ici - il manquait peut-être avant
+        console.log(`📧 Envoi de l'email de confirmation au client: ${customer.email}`);
         await sendOrderConfirmation(customer, newOrder);
-        console.log(`✉️ Email de confirmation envoyé au client: ${customer.email}`);
+        console.log(`✉️ ✅ Email de confirmation envoyé avec succès au client: ${customer.email}`);
       } catch (emailError) {
-        console.error("❌ Erreur lors de l'envoi de l'email de confirmation:", emailError);
-        // Ne pas bloquer le processus si l'email échoue
+        console.error("❌ Erreur lors de l'envoi de l'email de confirmation au client:", emailError.message);
+        // On continue même si l'email échoue pour ne pas bloquer la commande
       }
+
+      // 2. NOUVEAU : Envoyer la notification à L'ADMIN (contact@monsavonvert.com)
+      try {
+        console.log(`🚨 Envoi de la notification admin pour la commande #${newOrder.orderNumber || newOrder._id}`);
+        await sendOrderNotificationToAdmin(customer, newOrder);
+        console.log(`✉️ ✅ Notification admin envoyée avec succès à: contact@monsavonvert.com`);
+      } catch (adminEmailError) {
+        console.error("❌ Erreur lors de l'envoi de la notification admin:", adminEmailError.message);
+        // On continue même si l'email admin échoue pour ne pas bloquer la commande
+      }
+      
+      console.log("📧 === FIN ENVOI DES EMAILS ===\n");
 
       console.log("✅ Client et commande enregistrés avec succès.");
     } catch (error) {
@@ -256,18 +271,32 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
       await customer.save();
       console.log(`🔄 Commande associée au client avec succès`);
 
-      // EMPLACEMENT CRITIQUE - Envoyer l'email de confirmation
-      console.log(`📧 Tentative d'envoi d'email au client ${customer.email} pour la commande ${newOrder._id}`);
+      // === NOUVELLE SECTION : ENVOI DES EMAILS ===
+      console.log("\n📧 === DÉBUT ENVOI DES EMAILS ===");
+      
+      // 1. Envoyer l'email de confirmation au CLIENT
       try {
-        // IMPORTANT: Ajout d'un await ici 
+        console.log(`📧 Envoi de l'email de confirmation au client: ${customer.email}`);
         await sendOrderConfirmation(customer, newOrder);
-        console.log(`✉️ Email de confirmation envoyé au client: ${customer.email}`);
+        console.log(`✉️ ✅ Email de confirmation envoyé avec succès au client: ${customer.email}`);
       } catch (emailError) {
-        console.error("❌ ERREUR IMPORTANTE lors de l'envoi de l'email de confirmation:", emailError);
-        // Ajouter plus de logs de débogage
-        console.error("Détail de l'erreur:", emailError.message);
-        console.error("Stack trace:", emailError.stack);
+        console.error("❌ Erreur lors de l'envoi de l'email de confirmation au client:", emailError.message);
+        console.error("Détail de l'erreur client:", emailError.stack);
+        // On continue même si l'email client échoue
       }
+
+      // 2. NOUVEAU : Envoyer la notification à L'ADMIN (contact@monsavonvert.com)
+      try {
+        console.log(`🚨 Envoi de la notification admin pour la commande #${newOrder.orderNumber || newOrder._id}`);
+        await sendOrderNotificationToAdmin(customer, newOrder);
+        console.log(`✉️ ✅ Notification admin envoyée avec succès à: contact@monsavonvert.com`);
+      } catch (adminEmailError) {
+        console.error("❌ ERREUR IMPORTANTE lors de l'envoi de la notification admin:", adminEmailError.message);
+        console.error("Détail de l'erreur admin:", adminEmailError.stack);
+        // On continue même si l'email admin échoue pour ne pas bloquer la commande
+      }
+      
+      console.log("📧 === FIN ENVOI DES EMAILS ===\n");
 
       console.log("✅ Client et commande enregistrés avec succès.");
     } catch (error) {
@@ -281,7 +310,6 @@ router.post("/webhook", express.raw({ type: "application/json" }), async (req, r
   console.log("📬 Réponse 200 envoyée à Stripe");
   res.status(200).send("Webhook reçu et traité avec succès.");
 });
-
 
 // Route de test pour envoyer un email manuellement
 router.get("/test-email-simple", async (req, res) => {
@@ -297,6 +325,7 @@ router.get("/test-email-simple", async (req, res) => {
     
     const testOrder = {
       _id: 'TEST123456789',
+      orderNumber: 'TEST-001',
       items: [
         {
           name: 'Test Savon',
@@ -304,19 +333,28 @@ router.get("/test-email-simple", async (req, res) => {
           quantity: 2
         }
       ],
-      totalAmount: 21.98
+      totalAmount: 21.98,
+      createdAt: new Date()
     };
     
-    // Envoyer l'email de test
+    // Envoyer TOUS les emails de test
+    console.log('📧 Envoi de l\'email de confirmation client...');
     await sendOrderConfirmation(testCustomer, testOrder);
+    
+    console.log('🚨 Envoi de la notification admin...');
+    await sendOrderNotificationToAdmin(testCustomer, testOrder);
     
     res.json({
       success: true,
-      message: 'Email de test envoyé !',
-      destinataire: testCustomer.email
+      message: 'Emails de test envoyés avec succès !',
+      details: {
+        clientEmail: testCustomer.email,
+        adminEmail: 'contact@monsavonvert.com',
+        orderNumber: testOrder.orderNumber
+      }
     });
   } catch (error) {
-    console.error('Erreur lors de l\'envoi de l\'email de test:', error);
+    console.error('Erreur lors de l\'envoi des emails de test:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -324,5 +362,68 @@ router.get("/test-email-simple", async (req, res) => {
   }
 });
 
+// NOUVELLE ROUTE : Test spécifique de la notification admin
+router.get("/test-admin-notification", async (req, res) => {
+  try {
+    console.log('🚨 Test spécifique de la notification admin');
+    
+    // Créer un client et une commande factices pour le test
+    const testCustomer = {
+      _id: 'test-customer-id',
+      firstName: 'Jean',
+      lastName: 'Dupont', 
+      email: 'jean.dupont@email.com',
+      phone: '0123456789'
+    };
+    
+    const testOrder = {
+      _id: 'test-order-id',
+      orderNumber: 'CMD-2024-001',
+      items: [
+        {
+          name: 'Savon à l\'huile d\'olive',
+          price: 8.50,
+          quantity: 3
+        },
+        {
+          name: 'Savon au miel et avoine',
+          price: 9.99,
+          quantity: 1
+        }
+      ],
+      totalAmount: 35.49,
+      createdAt: new Date(),
+      shippingAddress: {
+        name: 'Jean Dupont',
+        line1: '123 Rue de la Paix',
+        city: 'Paris',
+        postal_code: '75001',
+        country: 'France'
+      }
+    };
+    
+    // Envoyer UNIQUEMENT la notification admin
+    console.log('🚨 Envoi de la notification admin...');
+    await sendOrderNotificationToAdmin(testCustomer, testOrder);
+    
+    res.json({
+      success: true,
+      message: 'Notification admin envoyée avec succès !',
+      details: {
+        adminEmail: 'contact@monsavonvert.com',
+        customerEmail: testCustomer.email,
+        orderNumber: testOrder.orderNumber,
+        totalAmount: testOrder.totalAmount
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de la notification admin:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 module.exports = router;

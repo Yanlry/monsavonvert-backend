@@ -4,8 +4,8 @@ const Order = require('../models/Order');
 const Customer = require('../models/Customer');
 const User = require('../models/user');
 const Product = require('../models/product');
-// Import du module d'envoi d'email que nous allons créer
-const { sendOrderConfirmation } = require('../modules/emailSender');
+// Import du module d'envoi d'email AVEC LA NOUVELLE FONCTION
+const { sendOrderConfirmation, sendOrderNotificationToAdmin } = require('../modules/emailSender');
 
 // Route pour confirmer une commande après paiement Stripe
 router.post('/confirm-order', async (req, res) => {
@@ -159,16 +159,30 @@ router.post('/confirm-order', async (req, res) => {
     
     console.log("✅ Stocks mis à jour avec succès:", stockUpdates);
 
-    // NOUVEAU: Envoyer l'email de confirmation au client
+    // === NOUVELLE SECTION : ENVOI DES EMAILS ===
+    console.log("\n📧 === DÉBUT ENVOI DES EMAILS ===");
+    
+    // 1. Envoyer l'email de confirmation au CLIENT
     try {
       console.log(`📧 Envoi de l'email de confirmation au client: ${customer.email}`);
-      // Utilisation de la fonction d'envoi d'email avec le vrai client et la vraie commande
       await sendOrderConfirmation(customer, newOrder);
-      console.log(`✉️ Email de confirmation envoyé avec succès au client: ${customer.email}`);
+      console.log(`✉️ ✅ Email de confirmation envoyé avec succès au client: ${customer.email}`);
     } catch (emailError) {
-      console.error("❌ Erreur lors de l'envoi de l'email de confirmation:", emailError);
+      console.error("❌ Erreur lors de l'envoi de l'email de confirmation au client:", emailError.message);
       // On continue même si l'email échoue pour ne pas bloquer la commande
     }
+
+    // 2. NOUVEAU : Envoyer la notification à L'ADMIN (contact@monsavonvert.com)
+    try {
+      console.log(`🚨 Envoi de la notification admin pour la commande #${newOrder.orderNumber || newOrder._id}`);
+      await sendOrderNotificationToAdmin(customer, newOrder);
+      console.log(`✉️ ✅ Notification admin envoyée avec succès à: contact@monsavonvert.com`);
+    } catch (adminEmailError) {
+      console.error("❌ Erreur lors de l'envoi de la notification admin:", adminEmailError.message);
+      // On continue même si l'email admin échoue pour ne pas bloquer la commande
+    }
+    
+    console.log("📧 === FIN ENVOI DES EMAILS ===\n");
 
     // Répondre avec les données de la commande
     console.log("📬 Envoi de la réponse");
@@ -176,7 +190,7 @@ router.post('/confirm-order', async (req, res) => {
       success: true,
       order: newOrder,
       stockUpdates: stockUpdates,
-      message: "Commande confirmée et stocks mis à jour avec succès"
+      message: "Commande confirmée, stocks mis à jour et notifications envoyées avec succès"
     });
   } catch (error) {
     console.error("❌ Erreur lors de la confirmation de la commande:", error);
