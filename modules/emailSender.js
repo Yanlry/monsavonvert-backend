@@ -411,7 +411,7 @@ const sendOrderConfirmation = async (customer, order) => {
                 ` : `
                   <div style="color: #2e7d32; font-weight: 600;">
                     📦 <strong>Livraison standard</strong><br>
-                    <span style="font-size: 14px; opacity: 0.8;">Livraison en 3-5 jours ouvrées</span>
+                    <span style="font-size: 14px; opacity: 0.8;">Livraison en 2-5 jours ouvrées</span>
                   </div>
                 `}
               </div>
@@ -493,7 +493,7 @@ const sendOrderConfirmation = async (customer, order) => {
         '🏪 Remise en main propre - Nous vous contacterons pour organiser la récupération' :
         order.shippingMethod === 'express' ?
         '⚡ Livraison express - Livraison en 24-48h ouvrées' :
-        '📦 Livraison standard - Livraison en 3-5 jours ouvrées'
+        '📦 Livraison standard - Livraison en 2-5 jours ouvrées'
       }
       
       ${order.shippingMethod !== 'pickup' ? 'Vous recevrez un email de confirmation d\'expédition avec numéro de suivi.' : ''}
@@ -582,7 +582,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
         <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #1976d2;">
           <p style="margin: 0; color: #1565c0; font-weight: 600;">
             📦 <strong>Livraison standard</strong><br>
-            <span style="font-size: 14px; opacity: 0.8;">Livraison en 3-5 jours ouvrés</span>
+            <span style="font-size: 14px; opacity: 0.8;">Livraison en 2-5 jours ouvrés</span>
           </p>
         </div>
       `;
@@ -848,7 +848,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
         '🏪 Remise en main propre - Contacter le client pour organiser la récupération' :
         order.shippingMethod === 'express' ?
         '⚡ Livraison express - Livraison en 24-48h' :
-        '📦 Livraison standard - Livraison en 3-5 jours ouvrés'
+        '📦 Livraison standard - Livraison en 2-5 jours ouvrés'
       }
       
       === ACTIONS À PRENDRE ===
