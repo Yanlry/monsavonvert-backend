@@ -1,5 +1,5 @@
 // backend/modules/emailSender.js
-// Migration complète vers Mailjet + NOTIFICATION ADMIN - VERSION FINALE CORRIGÉE
+// Migration complète vers Mailjet + NOTIFICATION ADMIN - VERSION FINALE CORRIGÉE + CONTACT FORM
 // INSTRUCTIONS : Remplacez TOUT le contenu de votre fichier existant par ce code
 
 const Mailjet = require('node-mailjet');
@@ -1081,11 +1081,209 @@ const sendPasswordResetEmail = async (user, resetToken) => {
   }
 };
 
+/**
+ * NOUVELLE FONCTION : Envoyer un email quand quelqu'un remplit le formulaire de contact
+ */
+const sendContactFormEmail = async (contactData) => {
+  try {
+    console.log('\n📞 === PRÉPARATION EMAIL FORMULAIRE CONTACT ===');
+    console.log('📞 Nom du client:', contactData.name);
+    console.log('📞 Email du client:', contactData.email);
+    console.log('📞 Sujet:', contactData.subject);
+    console.log('📞 Message reçu');
+    
+    // Validation des données d'entrée
+    if (!contactData || !contactData.email || !contactData.name || !contactData.message) {
+      throw new Error('❌ Données de contact manquantes - nom, email et message requis');
+    }
+    
+    // Convertir le sujet en texte lisible
+    const subjectLabels = {
+      'information': 'Demande d\'information',
+      'order': 'Question sur une commande',
+      'wholesale': 'Partenariat commercial',
+      'custom': 'Commande personnalisée',
+      'other': 'Autre demande'
+    };
+    
+    const readableSubject = subjectLabels[contactData.subject] || 'Demande d\'information';
+    
+    // Template HTML pour l'email que TU vas recevoir
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>📞 Nouveau message de contact - Mon Savon Vert</title>
+      </head>
+      <body style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5;">
+        
+        <!-- Container principal -->
+        <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 0 20px rgba(0,0,0,0.1);">
+          
+          <!-- BANNIÈRE SUPÉRIEURE -->
+          <div style="width: 100%; background: linear-gradient(135deg, #1976d2, #2196f3); padding: 30px 0; text-align: center;">
+            <h1 style="margin: 0; color: white; font-size: 32px; font-weight: bold;">
+              📞 NOUVEAU MESSAGE DE CONTACT
+            </h1>
+            <p style="margin: 10px 0 0 0; color: #bbdefb; font-size: 16px; font-weight: 500;">
+              Un client a rempli le formulaire sur votre site
+            </p>
+          </div>
+          
+          <!-- CONTENU PRINCIPAL -->
+          <div style="padding: 40px 30px;">
+            
+            <!-- Alerte nouveau message -->
+            <div style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 3px solid #1976d2; border-radius: 15px; padding: 25px; margin-bottom: 30px;">
+              <h2 style="margin: 0 0 15px 0; color: #0d47a1; font-size: 24px; font-weight: bold;">
+                📧 Nouveau message reçu !
+              </h2>
+              <p style="margin: 0; color: #1565c0; font-size: 16px; font-weight: 500;">
+                Un client souhaite vous contacter via le formulaire de votre site web
+              </p>
+              <p style="margin: 10px 0 0 0; color: #1976d2; font-size: 14px;">
+                📅 Reçu le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+              </p>
+            </div>
+            
+            <!-- Informations du client -->
+            <div style="background: #ffffff; border: 2px solid #4caf50; border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 20px 0; color: #4caf50; font-size: 20px; font-weight: bold; border-bottom: 2px solid #e8f5e8; padding-bottom: 10px;">
+                👤 Informations du client
+              </h3>
+              <div style="display: grid; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                  <span style="font-weight: 600; color: #555;">👤 Nom :</span>
+                  <span style="color: #4caf50; font-weight: 600; font-size: 16px;">${contactData.name}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                  <span style="font-weight: 600; color: #555;">📧 Email :</span>
+                  <span style="color: #1976d2; font-weight: 600; font-size: 16px;">
+                    <a href="mailto:${contactData.email}" style="color: #1976d2; text-decoration: none;">${contactData.email}</a>
+                  </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                  <span style="font-weight: 600; color: #555;">📋 Sujet :</span>
+                  <span style="color: #ff9800; font-weight: 600; font-size: 16px;">${readableSubject}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Message du client -->
+            <div style="background: #ffffff; border: 2px solid #ff9800; border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 20px 0; color: #ff9800; font-size: 20px; font-weight: bold; border-bottom: 2px solid #fff3e0; padding-bottom: 10px;">
+                💬 Message du client
+              </h3>
+              <div style="background: #fafafa; padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                <p style="margin: 0; color: #424242; line-height: 1.8; font-size: 16px;">
+                  ${contactData.message.replace(/\n/g, '<br>')}
+                </p>
+              </div>
+            </div>
+            
+            <!-- Action à prendre -->
+            <div style="background: linear-gradient(135deg, #4caf50, #66bb6a); color: white; padding: 25px; border-radius: 15px; text-align: center; margin-bottom: 25px;">
+              <h3 style="margin: 0 0 15px 0; font-size: 22px; font-weight: bold;">
+                ✉️ Répondre au client
+              </h3>
+              <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 16px;">
+                Cliquez sur le bouton ci-dessous pour répondre directement par email
+              </p>
+              <a href="mailto:${contactData.email}?subject=Re: ${readableSubject} - Mon Savon Vert&body=Bonjour ${contactData.name},%0A%0AMerci pour votre message concernant: ${readableSubject}%0A%0A[Votre réponse ici]%0A%0ACordialement,%0AL'équipe Mon Savon Vert" 
+                 style="display: inline-block; background: #ffffff; color: #4caf50; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+                📧 Répondre maintenant
+              </a>
+            </div>
+            
+            <!-- Récapitulatif -->
+            <div style="background: #f5f5f5; border: 2px solid #9e9e9e; border-radius: 15px; padding: 25px; text-align: center;">
+              <h3 style="margin: 0 0 15px 0; color: #424242; font-size: 18px; font-weight: bold;">
+                📊 Récapitulatif du contact
+              </h3>
+              <div style="color: #666; line-height: 1.8;">
+                <p style="margin: 0 0 10px 0;">📅 <strong>Date :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+                <p style="margin: 0 0 10px 0;">⏰ <strong>Heure :</strong> ${new Date().toLocaleTimeString('fr-FR')}</p>
+                <p style="margin: 0 0 10px 0;">🌐 <strong>Source :</strong> Formulaire de contact du site web</p>
+                <p style="margin: 0;">⭐ <strong>Priorité :</strong> ${contactData.subject === 'order' ? 'Haute (commande)' : contactData.subject === 'wholesale' ? 'Haute (partenariat)' : 'Normale'}</p>
+              </div>
+            </div>
+            
+          </div>
+          
+          <!-- BANNIÈRE INFÉRIEURE -->
+          <div style="width: 100%; background-color: #424242; padding: 30px 20px; text-align: center;">
+            <h4 style="margin: 0 0 10px 0; color: white; font-size: 18px; font-weight: bold;">
+              Mon Savon Vert - Administration
+            </h4>
+            <p style="margin: 0; color: #bdbdbd; font-size: 14px;">
+              Email automatique • Nouveau message de contact • ${new Date().toLocaleString('fr-FR')}
+            </p>
+          </div>
+          
+        </div>
+        
+      </body>
+      </html>
+    `;
+    
+    // Version texte de l'email
+    const textContent = `
+      NOUVEAU MESSAGE DE CONTACT - MON SAVON VERT
+      
+      Un client a rempli le formulaire de contact sur votre site !
+      
+      === INFORMATIONS DU CLIENT ===
+      👤 Nom : ${contactData.name}
+      📧 Email : ${contactData.email}
+      📋 Sujet : ${readableSubject}
+      
+      === MESSAGE DU CLIENT ===
+      ${contactData.message}
+      
+      === INFORMATIONS ===
+      📅 Date : ${new Date().toLocaleDateString('fr-FR')}
+      ⏰ Heure : ${new Date().toLocaleTimeString('fr-FR')}
+      🌐 Source : Formulaire de contact du site web
+      
+      Pour répondre au client, utilisez son adresse email : ${contactData.email}
+      
+      --
+      Mon Savon Vert Administration
+      Email automatique généré le ${new Date().toLocaleString('fr-FR')}
+    `;
+    
+    console.log('📞 Template email de contact préparé');
+    
+    // Envoi de l'email via Mailjet vers TON adresse
+    const result = await sendEmailViaMailjet({
+      to: 'contact@monsavonvert.com', // TON adresse email
+      subject: `📞 Nouveau message de ${contactData.name} - ${readableSubject}`,
+      htmlContent: htmlContent,
+      textContent: textContent,
+      fromName: 'Mon Savon Vert - Contact Form'
+    });
+    
+    console.log('📞 === EMAIL DE CONTACT ENVOYÉ ===\n');
+    return result;
+    
+  } catch (error) {
+    console.error('❌ === ERREUR EMAIL FORMULAIRE CONTACT ===');
+    console.error('❌ Erreur:', error.message);
+    console.error('❌ Client concerné:', contactData?.email || 'Email non disponible');
+    console.error('❌ Nom du client:', contactData?.name || 'Nom non disponible');
+    console.error('=== FIN ERREUR EMAIL CONTACT ===\n');
+    throw error;
+  }
+};
+
 // Export des fonctions pour utilisation dans vos routes
 module.exports = {
   sendOrderConfirmation,
   sendOrderNotificationToAdmin,  // NOUVELLE FONCTION AJOUTÉE
   sendPasswordResetEmail,
+  sendContactFormEmail,         // NOUVELLE FONCTION CONTACT AJOUTÉE
   testMailjetConnection,
   sendEmailViaMailjet
 };

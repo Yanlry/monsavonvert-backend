@@ -18,6 +18,7 @@ var stripeRoutes = require('./routes/stripe-webhook');
 var stripeCheckoutRoutes = require('./routes/create-checkout');
 var confirmOrderRouter = require('./routes/confirm-order');  
 var ordersRouter = require('./routes/orders');
+var contactRouter = require('./routes/contact');
 
 var app = express();
 
@@ -62,7 +63,7 @@ app.use('/stripe', stripeRoutes);
 app.use('/api', stripeCheckoutRoutes);
 app.use('/api', confirmOrderRouter); 
 app.use('/orders', ordersRouter);
-
+app.use('/contact', contactRouter);
 // ✅ Port pour Vercel
 const PORT = process.env.PORT || 8888;
 
