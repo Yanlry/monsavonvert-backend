@@ -312,14 +312,7 @@ const sendOrderConfirmation = async (customer, order) => {
                 ✅ Commande confirmée !
               </h2>
               <p style="color: #666; margin: 10px 0 0 0; font-size: 16px;">
-                Merci pour votre confiance en nos produits naturels
-              </p>
-            </div>
-            
-            <!-- Message personnel -->
-            <div style="background: linear-gradient(135deg, #e8f5e8, #f1f8e9); padding: 30px; border-radius: 15px; margin-bottom: 35px; border-left: 5px solid #1b5e20;">
-              <p style="margin: 0; font-size: 18px; color: #2e7d32;">
-                Bonjour <strong style="color: #1b5e20;">${customer.firstName || customer.email}</strong>,
+                Merci pour votre confiance !
               </p>
             </div>
             
@@ -369,7 +362,7 @@ const sendOrderConfirmation = async (customer, order) => {
                 Total de votre commande : ${order.totalAmount ? order.totalAmount.toFixed(2) : '0.00'}€
               </h3>
               <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 14px;">
-                TVA incluse • Livraison calculée à l'étape suivante
+                TVA & Livraison incluse
               </p>
             </div>
             
@@ -387,7 +380,7 @@ const sendOrderConfirmation = async (customer, order) => {
                   ${customerAddress.street}<br>
                   ${customerAddress.postalCode} ${customerAddress.city}<br>
                   ${customerAddress.country}
-                  ${customerAddress.phone ? `<br>📱 ${customerAddress.phone}` : ''}
+                  ${customerAddress.phone ? `<br>${customerAddress.phone}` : ''}
                 </p>
               </div>
               
@@ -414,7 +407,7 @@ const sendOrderConfirmation = async (customer, order) => {
               
               <div style="color: #2e7d32; line-height: 1.8;">
                 <p style="margin: 0 0 10px 0;"><strong>Préparation :</strong> Votre commande sera préparée et envoyé avec soin sous 24h ouvrées</p>
-                ${order.shippingMethod !== 'pickup' ? `<p style="margin: 0 0 10px 0;">🚛 <strong>Expédition :</strong> Vous recevrez un email de confirmation d'expédition avec numéro de suivi</p>` : ''}
+                ${order.shippingMethod !== 'pickup' ? `<p style="margin: 0 0 10px 0;"><strong>Expédition :</strong> Vous recevrez un email de confirmation d'expédition avec numéro de suivi</p>` : ''}
               </div>
             </div>
             
@@ -428,7 +421,7 @@ const sendOrderConfirmation = async (customer, order) => {
               </p>
               <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #1b5e20;">
                 <p style="margin: 0; font-weight: bold; color: #1b5e20; font-size: 16px;">
-                  📧 contact@monsavonvert.com
+                  contact@monsavonvert.com
                 </p>
                 <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">
                   Réponse garantie sous 24h • Du lundi au vendredi, 9h-18h
@@ -466,10 +459,6 @@ const sendOrderConfirmation = async (customer, order) => {
     const textContent = `
       MON SAVON VERT - Confirmation de commande
       
-      Bonjour ${customer.firstName || customer.email},
-      
-      Nous avons bien reçu votre commande et nous vous remercions !
-      
       DÉTAILS DE VOTRE COMMANDE :
       - Numéro : ${orderNumber}
       - Date : ${new Date(order.createdAt || Date.now()).toLocaleDateString('fr-FR')}
@@ -485,10 +474,10 @@ const sendOrderConfirmation = async (customer, order) => {
       
       MODE DE LIVRAISON :
       ${order.shippingMethod === 'pickup' ? 
-        '🏪 Remise en main propre - Nous vous contacterons pour organiser la récupération' :
+        'Remise en main propre - Nous vous contacterons pour organiser la récupération' :
         order.shippingMethod === 'express' ?
-        '⚡ Livraison express - Livraison en 24-48h ouvrées' :
-        '📦 Livraison standard - Livraison en 2-5 jours ouvrées'
+        'Livraison express - Livraison en 24-48h ouvrées' :
+        'Livraison standard - Livraison en 2-5 jours ouvrées'
       }
       
       ${order.shippingMethod !== 'pickup' ? 'Vous recevrez un email de confirmation d\'expédition avec numéro de suivi.' : ''}
