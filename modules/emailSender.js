@@ -50,27 +50,35 @@ const generateOrderNumber = (orderId) => {
 };
 
 /**
- * NOUVELLE FONCTION : Récupération de l'adresse complète du client
+ * FONCTION TOTALEMENT CORRIGÉE : Récupération de l'adresse complète du client
+ * Gère les modèles Customer (sans adresse) et User (avec tableau addresses)
  */
 const getCompleteCustomerAddress = (customer) => {
-  console.log('🏠 Récupération de l\'adresse pour:', customer);
+  console.log('🏠 === RÉCUPÉRATION ADRESSE CLIENT ===');
+  console.log('🏠 Données client reçues:', JSON.stringify(customer, null, 2));
   
-  // Essayer d'abord le format User (avec tableau addresses)
-  if (customer.addresses && customer.addresses.length > 0) {
-    const addr = customer.addresses[0];
-    return {
+  // CAS 1: Format User avec tableau addresses (contient les vraies adresses)
+  if (customer.addresses && Array.isArray(customer.addresses) && customer.addresses.length > 0) {
+    console.log('🏠 ✅ Format détecté: User avec tableau addresses');
+    const addr = customer.addresses[0]; // Prendre la première adresse
+    
+    const result = {
       name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
-      street: addr.street || '',
+      street: addr.street || 'Adresse non disponible',
       postalCode: addr.postalCode || '',
       city: addr.city || '',
       country: addr.country || 'France',
       phone: customer.phone || ''
     };
+    
+    console.log('🏠 ✅ Adresse extraite (format User):', result);
+    return result;
   }
   
-  // Ensuite le format Customer (champs séparés)
+  // CAS 2: Format Customer avec champs séparés (ANCIEN FORMAT - si ça existe)
   if (customer.address && customer.city && customer.postalCode) {
-    return {
+    console.log('🏠 ✅ Format détecté: Customer avec champs séparés');
+    const result = {
       name: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
       street: customer.address,
       postalCode: customer.postalCode,
@@ -78,17 +86,61 @@ const getCompleteCustomerAddress = (customer) => {
       country: customer.country || 'France',
       phone: customer.phone || ''
     };
+    
+    console.log('🏠 ✅ Adresse extraite (format Customer):', result);
+    return result;
   }
   
-  // Fallback avec ce qu'on a
-  return {
+  // CAS 3: Customer SANS adresse (le cas actuel avec ton modèle Customer)
+  console.log('⚠️ ATTENTION: Modèle Customer détecté SANS adresse !');
+  console.log('⚠️ Il faut passer un objet User pour avoir l\'adresse, ou faire une jointure User/Customer');
+  
+  const fallbackResult = {
     name: customer.firstName ? `${customer.firstName} ${customer.lastName || ''}`.trim() : 'Client',
-    street: customer.address || 'Adresse non disponible',
-    postalCode: customer.postalCode || '',
-    city: customer.city || '',
-    country: customer.country || 'France',
+    street: 'Adresse non disponible',
+    postalCode: '',
+    city: '',
+    country: 'France',
     phone: customer.phone || ''
   };
+  
+  console.log('🏠 ⚠️ Adresse fallback utilisée (Customer sans adresse):', fallbackResult);
+  console.log('🏠 === FIN RÉCUPÉRATION ADRESSE ===\n');
+  return fallbackResult;
+};
+
+/**
+ * NOUVELLE FONCTION : Récupérer l'adresse depuis le modèle User par email
+ * Cette fonction fait une requête pour récupérer l'adresse du User correspondant
+ */
+const getAddressFromUser = async (customerEmail) => {
+  try {
+    console.log('🔍 === RECHERCHE ADRESSE VIA USER ===');
+    console.log('🔍 Email à chercher:', customerEmail);
+    
+    // Import du modèle User (assurez-vous que le chemin est correct)
+    const User = require('../models/user');
+    
+    // Chercher l'utilisateur par email
+    const user = await User.findOne({ email: customerEmail }).select('firstName lastName addresses phone');
+    
+    if (!user) {
+      console.log('⚠️ Aucun User trouvé pour cet email');
+      return null;
+    }
+    
+    console.log('✅ User trouvé:', JSON.stringify(user, null, 2));
+    
+    // Extraire l'adresse du User
+    const addressInfo = getCompleteCustomerAddress(user);
+    console.log('🔍 === FIN RECHERCHE ADRESSE VIA USER ===\n');
+    
+    return addressInfo;
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la recherche User:', error.message);
+    return null;
+  }
 };
 
 /**
@@ -195,7 +247,7 @@ const testMailjetConnection = async () => {
     
     const response = await mailjetClient
       .post('send', { version: 'v3.1' })
-      .request(emailData);
+      .request(testEmailData);
     
     console.log('✅ Test Mailjet réussi !');
     console.log('📬 Statut:', response.response.status);
@@ -220,7 +272,7 @@ const testMailjetConnection = async () => {
 
 /**
  * Fonction pour envoyer l'email de confirmation de commande au CLIENT
- * VERSION CORRIGÉE FINALE - Avec adresse complète et méthode de livraison
+ * VERSION TOTALEMENT CORRIGÉE - Récupère l'adresse depuis le modèle User
  */
 const sendOrderConfirmation = async (customer, order) => {
   try {
@@ -230,7 +282,7 @@ const sendOrderConfirmation = async (customer, order) => {
     console.log('💼 Montant:', order.totalAmount);
     console.log('💼 Données client reçues:', JSON.stringify(customer, null, 2));
     
-    // Validation des données d'entrée - CORRIGÉE
+    // Validation des données d'entrée
     if (!customer || !customer.email) {
       throw new Error('❌ Données client manquantes ou email invalide');
     }
@@ -239,9 +291,25 @@ const sendOrderConfirmation = async (customer, order) => {
       throw new Error('❌ Données de commande manquantes - Order ID requis');
     }
     
-    // Récupérer l'adresse complète du client
-    const customerAddress = getCompleteCustomerAddress(customer);
-    console.log('🏠 Adresse récupérée:', customerAddress);
+    // CORRECTION PRINCIPALE : Récupérer l'adresse depuis le modèle User
+    let customerAddress;
+    
+    // Essayer d'abord avec les données customer actuelles
+    customerAddress = getCompleteCustomerAddress(customer);
+    
+    // Si pas d'adresse trouvée, chercher dans le modèle User
+    if (customerAddress.street === 'Adresse non disponible') {
+      console.log('🔍 Tentative de récupération de l\'adresse depuis le modèle User...');
+      const userAddress = await getAddressFromUser(customer.email);
+      if (userAddress) {
+        customerAddress = userAddress;
+        console.log('✅ Adresse récupérée depuis le modèle User');
+      } else {
+        console.log('⚠️ Aucune adresse trouvée dans le modèle User non plus');
+      }
+    }
+    
+    console.log('🏠 Adresse finale utilisée pour l\'email client:', customerAddress);
     
     // Générer un numéro de commande lisible à partir de l'_id
     const orderNumber = generateOrderNumber(order._id);
@@ -366,27 +434,27 @@ const sendOrderConfirmation = async (customer, order) => {
               </p>
             </div>
             
-            <!-- NOUVELLE SECTION : Informations de livraison avec adresse complète et méthode -->
+            <!-- SECTION : Informations de livraison avec adresse complète et méthode -->
             <div style="background: #e8f5e8; border-radius: 15px; padding: 30px; margin-bottom: 35px; border-left: 5px solid #1b5e20;">
               <h3 style="margin: 0 0 20px 0; color: #1b5e20; font-size: 20px; font-weight: bold;">
-                Informations de livraison
+                🚚 Informations de livraison
               </h3>
               
               <!-- Adresse de livraison -->
               <div style="background: #ffffff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c8e6c9;">
-                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">Adresse de livraison :</h4>
+                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">📍 Adresse de livraison :</h4>
                 <p style="margin: 0; color: #2e7d32; line-height: 1.6; font-weight: 500;">
                   ${customerAddress.name}<br>
                   ${customerAddress.street}<br>
                   ${customerAddress.postalCode} ${customerAddress.city}<br>
                   ${customerAddress.country}
-                  ${customerAddress.phone ? `<br>${customerAddress.phone}` : ''}
+                  ${customerAddress.phone ? `<br>📱 ${customerAddress.phone}` : ''}
                 </p>
               </div>
               
               <!-- Méthode de livraison -->
               <div style="background: #ffffff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c8e6c9;">
-                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">Mode de livraison :</h4>
+                <h4 style="margin: 0 0 10px 0; color: #1b5e20; font-size: 16px;">🚛 Mode de livraison :</h4>
                 ${order.shippingMethod === 'pickup' ? `
                   <div style="color: #2e7d32; font-weight: 600;">
                     <strong>Remise en main propre</strong><br>
@@ -406,7 +474,7 @@ const sendOrderConfirmation = async (customer, order) => {
               </div>
               
               <div style="color: #2e7d32; line-height: 1.8;">
-                <p style="margin: 0 0 10px 0;"><strong>Préparation :</strong> Votre commande sera préparée et envoyé avec soin sous 24h ouvrées</p>
+                <p style="margin: 0 0 10px 0;"><strong>Préparation :</strong> Votre commande sera préparée et envoyée avec soin sous 24h ouvrées</p>
                 ${order.shippingMethod !== 'pickup' ? `<p style="margin: 0 0 10px 0;"><strong>Expédition :</strong> Vous recevrez un email de confirmation d'expédition avec numéro de suivi</p>` : ''}
               </div>
             </div>
@@ -513,8 +581,8 @@ const sendOrderConfirmation = async (customer, order) => {
 };
 
 /**
- * NOUVELLE FONCTION : Notification ADMIN pour chaque nouvelle commande
- * VERSION CORRIGÉE FINALE - Avec adresse complète et méthode de livraison
+ * FONCTION CORRIGÉE : Notification ADMIN pour chaque nouvelle commande
+ * Utilise la même logique de récupération d'adresse
  */
 const sendOrderNotificationToAdmin = async (customer, order) => {
   try {
@@ -524,7 +592,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     console.log('🚨 Montant:', order.totalAmount);
     console.log('🚨 Notification vers: contact@monsavonvert.com');
     
-    // Validation des données d'entrée - CORRIGÉE
+    // Validation des données d'entrée
     if (!customer || !customer.email) {
       throw new Error('❌ Données client manquantes ou email invalide');
     }
@@ -537,8 +605,24 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
     const orderNumber = generateOrderNumber(order._id);
     console.log('🚨 Numéro de commande généré:', orderNumber);
     
-    // Récupérer l'adresse complète du client pour l'admin
-    const customerAddress = getCompleteCustomerAddress(customer);
+    // CORRECTION : Récupérer l'adresse avec la même logique que pour le client
+    let customerAddress;
+    
+    // Essayer d'abord avec les données customer actuelles
+    customerAddress = getCompleteCustomerAddress(customer);
+    
+    // Si pas d'adresse trouvée, chercher dans le modèle User
+    if (customerAddress.street === 'Adresse non disponible') {
+      console.log('🔍 Tentative de récupération de l\'adresse depuis le modèle User pour admin...');
+      const userAddress = await getAddressFromUser(customer.email);
+      if (userAddress) {
+        customerAddress = userAddress;
+        console.log('✅ Adresse récupérée depuis le modèle User pour admin');
+      } else {
+        console.log('⚠️ Aucune adresse trouvée dans le modèle User pour admin');
+      }
+    }
+    
     console.log('🏠 Adresse admin récupérée:', customerAddress);
     
     // Récupération de la méthode de livraison
@@ -572,7 +656,7 @@ const sendOrderNotificationToAdmin = async (customer, order) => {
       `;
     }
     
-    // Construction de la liste des produits pour l'admin - CORRIGÉE
+    // Construction de la liste des produits pour l'admin
     let adminProductsList = '';
     if (order.items && order.items.length > 0) {
       adminProductsList = order.items.map(item => {
